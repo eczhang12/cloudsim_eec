@@ -6,9 +6,31 @@
 //
 
 #include "Scheduler.hpp"
+#include <atomic>         // For std::atomic<unsigned>
+#include <thread>         // For std::this_thread::sleep_for()
+#include <chrono>         // For std::chrono::milliseconds
+
 
 static bool migrating = false;
 static unsigned active_machines = 16;
+static unsigned machines_in_use = 1;
+
+// struct MachineLoad {
+//   MachineId_t id;
+//   double utilization;
+// };
+
+// // Helper function to get the current utilization of a machine
+// double GetMachineUtilization(MachineId_t machine) {
+//   double used = Machine_GetUsedResources(machine);   // Current used resources
+//   double capacity = Machine_GetTotalResources(machine);  // Machine capacity
+//   return (capacity > 0) ? used / capacity : 0.0;
+// }
+
+// // Helper function to sort machines by utilization (ascending order)
+// bool CompareByUtil(const MachineLoad &a, const MachineLoad &b) {
+//   return a.utilization < b.utilization;
+// }
 
 void Scheduler::Init() {
   // Find the parameters of the clusters
@@ -24,8 +46,13 @@ void Scheduler::Init() {
                 to_string(Machine_GetTotal()),
             3);
   SimOutput("Scheduler::Init(): Initializing scheduler", 1);
+
+  
+  
+  // create your VMs and attach them to hardware machines.
+  // init state of VM and machine is to fully turn on everything, setting every state to 0
   for (unsigned i = 0; i < active_machines; i++)
-    vms.push_back(VM_Create(LINUX, X86));
+  vms.push_back(VM_Create(LINUX, X86));
   for (unsigned i = 0; i < active_machines; i++) {
     machines.push_back(MachineId_t(i));
   }
@@ -33,57 +60,29 @@ void Scheduler::Init() {
     VM_Attach(vms[i], machines[i]);
   }
 
-  bool dynamic = false;
+  bool dynamic = true;
   if (dynamic)
     for (unsigned i = 0; i < 4; i++)
       for (unsigned j = 0; j < 8; j++)
         Machine_SetCorePerformance(MachineId_t(0), j, P3);
-  // Turn off the ARM machines
-  for (unsigned i = 24; i < Machine_GetTotal(); i++)
+
+  // Turn off the ARM machines - see input file
+  for (unsigned i = 24; i < Machine_GetTotal(); i++) {
     Machine_SetState(MachineId_t(i), S5);
+    // std::cout << "turning off arm machine " << i << std::endl;
+  }
+
+
+  // MachineInfo_t machineInfo = Machine_GetInfo(machines[0]);
+  // std::cout << "current s state: " << machineInfo.s_state << std::endl;
+  // std::cout << "current p state: " << machineInfo.p_state << std::endl;
+  
+  // std::cout << "machine available memory: " << machineInfo.memory_size - machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+
 
   SimOutput("Scheduler::Init(): VM ids are " + to_string(vms[0]) + " ahd " +
                 to_string(vms[1]),
             3);
-
-  // cout << "\n-----print stuff-----" << endl;
-
-  
-
-  // cout << "vms[0] info " << endl;
-  // VMInfo_t VMInfo = VM_GetInfo(vms[15]);
-  // cout << "vms[0] active_tasks: " << VMInfo.active_tasks.size() << endl;
-  // cout << "vms[0] cpu:          " << VMInfo.cpu << endl;
-  // cout << "vms[0] machine_id:   " << VMInfo.machine_id << endl;
-  // cout << "vms[0] vm_id:        " << VMInfo.vm_id << endl;
-  // cout << "vms[0] vm_type:      " << VMInfo.vm_type << endl;
-
-  
-  
-  
-
-  // cout << "vm ids:      ";
-  // for (long unsigned int i = 0; i < vms.size(); i++) {
-  //   cout << vms[i] << ", ";
-  // }
-  // cout<<endl;
-
-  // cout << "machine ids: ";
-  // for (long unsigned int i = 0; i < machines.size(); i++) {
-  //   cout << machines[i] << ", ";
-  // }
-  // cout << endl;
-  
-  // cout << "energy use by machine: ";
-  // for (long unsigned int i = 0; i < machines.size(); i++) {
-  //   cout << Machine_GetEnergy(machines[i]) << ", ";
-  // }
-  // cout << endl;
-
-  // cout << "getNumTasks: " << GetNumTasks() << endl;
-
-  // cout << endl;
-
 
 }
 
@@ -106,9 +105,40 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
 
   if (migrating) {
     VM_AddTask(vms[0], task_id, GetTaskInfo(task_id).priority);
+
   } else {
-    VM_AddTask(vms[task_id % active_machines], task_id, GetTaskInfo(task_id).priority);
-  }  // Skeleton code, you need to change it according to your algorithm
+    // MachineInfo_t machineInfo = Machine_GetInfo(machines[task_id % active_machines]);
+    // std::cout << "machine " << task_id % active_machines << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+
+
+
+  // approach no. 2: greedy
+  // assign a task to a vm if it has enough memory for the task
+    bool addedTask = false;
+    MachineInfo_t machineInfo;
+    for (signed i = 0; i < machines_in_use; i++) {
+    // for (signed i = machines_in_use - 1; i >= 0; i--) {
+      machineInfo = Machine_GetInfo(MachineId_t(machines[i]));
+      unsigned memory_remaining = machineInfo.memory_size - machineInfo.memory_used;
+      if (memory_remaining >= GetTaskMemory(task_id) && memory_remaining >= machineInfo.memory_size / 2) {
+        std::cout << "machine " << i << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+        VM_AddTask(vms[i], task_id, GetTaskInfo(task_id).priority);
+        addedTask = true;
+        std::cout << "machine " << i << " used memory after adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+      }
+    }
+
+    if (!addedTask) {
+      machines_in_use++;
+      std::cout << "new machine " << machines_in_use - 1 << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+
+      VM_AddTask(vms[machines_in_use - 1], task_id, GetTaskInfo(task_id).priority);
+      std::cout << "new machine " << machines_in_use - 1 << " used memory after adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+    }
+
+  }
+
+
 }
 
 void Scheduler::PeriodicCheck(Time_t now) {
@@ -126,6 +156,14 @@ void Scheduler::Shutdown(Time_t time) {
   // Report about the SLA compliance
   // Shutdown everything to be tidy :-)
   for (auto& vm : vms) {
+    // while (VM_GetInfo(vm).active_tasks.size() != 0) {
+    //   std::this_thread::sleep_for(std::chrono::milliseconds(100));  
+    // }
+    // // TaskInfo_t taskInfo = GetTaskInfo(VM_GetInfo(vm).active_tasks[0]);
+    // // if (taskInfo.task_id == 81) {
+    // //   std::cout << "task " << taskInfo.task_id << ": " << taskInfo.completed << std::endl;
+    // // }
+    
     VM_Shutdown(vm);
   }
   SimOutput("SimulationComplete(): Finished!", 4);

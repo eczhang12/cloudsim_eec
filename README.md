@@ -4,3 +4,26 @@ For questions, please reach out to any of the course staff on via email (anish.p
 
 
 make simulator && make scheduler && ./simulator Input.md
+
+
+round robin results: 
+az9896@bloodstone:~/Downloads/cs378ee/cloudsim_eec$ make simulator && make scheduler && ./simulator Input.md
+make: 'simulator' is up to date.
+make: 'scheduler' is up to date.
+SLA violation report
+SLA0 : 40.625%
+SLA1 : 0%
+SLA2 : 0%
+Total Energy 0.044995KW-Hour
+Simulation run finished in 32.7 seconds
+
+
+Greedy solution NOT FINAL
+SLA violation report
+SLA0 : 6.20155%
+SLA1 : 0%
+SLA2 : 0%
+Total Energy 0.0196017KW-Hour
+Simulation run finished in 30.62 seconds
+Caught an exception!
+VM::Shutdown(): Shutting down a VM while tasks are still running--likely a bug
