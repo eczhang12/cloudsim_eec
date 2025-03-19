@@ -46,39 +46,43 @@ void Scheduler::Init() {
                 to_string(vms[1]),
             3);
 
-  cout << "\n-----print stuff-----" << endl;
+  // cout << "\n-----print stuff-----" << endl;
 
   
 
-  cout << "vms[0] info " << endl;
-  VMInfo_t VMInfo = VM_GetInfo(vms[15]);
-  cout << "vms[0] active_tasks: " << VMInfo.active_tasks.size() << endl;
-  cout << "vms[0] cpu:          " << VMInfo.cpu << endl;
-  cout << "vms[0] machine_id:   " << VMInfo.machine_id << endl;
-  cout << "vms[0] vm_id:        " << VMInfo.vm_id << endl;
-  cout << "vms[0] vm_type:      " << VMInfo.vm_type << endl;
+  // cout << "vms[0] info " << endl;
+  // VMInfo_t VMInfo = VM_GetInfo(vms[15]);
+  // cout << "vms[0] active_tasks: " << VMInfo.active_tasks.size() << endl;
+  // cout << "vms[0] cpu:          " << VMInfo.cpu << endl;
+  // cout << "vms[0] machine_id:   " << VMInfo.machine_id << endl;
+  // cout << "vms[0] vm_id:        " << VMInfo.vm_id << endl;
+  // cout << "vms[0] vm_type:      " << VMInfo.vm_type << endl;
 
-  cout << "vm ids:      ";
-  for (long unsigned int i = 0; i < vms.size(); i++) {
-    cout << vms[i] << ", ";
-  }
-  cout<<endl;
-
-  cout << "machine ids: ";
-  for (long unsigned int i = 0; i < machines.size(); i++) {
-    cout << machines[i] << ", ";
-  }
-  cout << endl;
   
-  cout << "energy use by machine: ";
-  for (long unsigned int i = 0; i < machines.size(); i++) {
-    cout << Machine_GetEnergy(machines[i]) << ", ";
-  }
-  cout << endl;
+  
+  
 
-  cout << "getNumTasks: " << GetNumTasks() << endl;
+  // cout << "vm ids:      ";
+  // for (long unsigned int i = 0; i < vms.size(); i++) {
+  //   cout << vms[i] << ", ";
+  // }
+  // cout<<endl;
 
-  cout << endl;
+  // cout << "machine ids: ";
+  // for (long unsigned int i = 0; i < machines.size(); i++) {
+  //   cout << machines[i] << ", ";
+  // }
+  // cout << endl;
+  
+  // cout << "energy use by machine: ";
+  // for (long unsigned int i = 0; i < machines.size(); i++) {
+  //   cout << Machine_GetEnergy(machines[i]) << ", ";
+  // }
+  // cout << endl;
+
+  // cout << "getNumTasks: " << GetNumTasks() << endl;
+
+  // cout << endl;
 
 
 }
@@ -88,12 +92,6 @@ void Scheduler::MigrationComplete(Time_t time, VMId_t vm_id) {
 }
 
 void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
-  // Get the task parameters
-  //  IsGPUCapable(task_id);
-  //  GetMemory(task_id);
-  //  RequiredVMType(task_id);
-  //  RequiredSLA(task_id);
-  //  RequiredCPUType(task_id);
   // Decide to attach the task to an existing VM,
   //      vm.AddTask(taskid, Priority_T priority); or
   // Create a new VM, attach the VM to a machine
@@ -105,13 +103,11 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
   // Turn on a machine, migrate an existing VM from a loaded machine....
   //
   // Other possibilities as desired
-  Priority_t priority =
-      (task_id == 0 || task_id == 64) ? HIGH_PRIORITY : MID_PRIORITY;
+
   if (migrating) {
-    VM_AddTask(vms[0], task_id, priority);
+    VM_AddTask(vms[0], task_id, GetTaskInfo(task_id).priority);
   } else {
-    if (HIGH_PRIORITY) VM_AddTask(vms[task_id % (active_machines / 2)], task_id, priority);
-    else VM_AddTask(vms[(task_id % (active_machines / 2)) + active_machines / 2], task_id, priority);
+    VM_AddTask(vms[task_id % active_machines], task_id, GetTaskInfo(task_id).priority);
   }  // Skeleton code, you need to change it according to your algorithm
 }
 

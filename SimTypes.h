@@ -56,7 +56,7 @@ typedef enum {
 #define S_STATES 7
 
 typedef enum {
-    HIGH_PRIORITY,           // System has 3 levels of priority,
+HIGH_PRIORITY,           // System has 3 levels of priority,
     MID_PRIORITY,
     LOW_PRIORITY
 } Priority_t;
