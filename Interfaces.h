@@ -57,7 +57,7 @@ extern unsigned         GetNumTasks();
 extern TaskInfo_t       GetTaskInfo(TaskId_t task_id);
 extern unsigned         GetTaskMemory(TaskId_t task_id);
 extern unsigned         GetTaskPriority(TaskId_t task_id);
-extern bool             IsSLAViolated(TaskId_t task_id);
+extern bool             IsSLAViolation(TaskId_t);
 extern bool             IsTaskCompleted(TaskId_t task_id);
 extern bool             IsTaskGPUCapable(TaskId_t task_id);
 extern CPUType_t        RequiredCPUType(TaskId_t task_id);
