@@ -21,6 +21,7 @@ public:
     void PeriodicCheck(Time_t now);
     void Shutdown(Time_t now);
     void TaskComplete(Time_t now, TaskId_t task_id);
+    void PrintStuff();
 private:
     vector<VMId_t> vms;
     vector<MachineId_t> machines;
