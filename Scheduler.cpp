@@ -35,10 +35,12 @@ typedef struct {
 
   unsigned total_tasks; // # of tasks of this combo
   uint64_t total_instructions; // # of total instructions for this combo
-  vector<VMId_t> gpu_vms;
-  vector<VMId_t> nongpu_vms;
-  unsigned gpu_vms_index;
-  unsigned nongpu_vms_index;
+  
+  vector<MachineId_t> gpu_machines;
+  vector<MachineId_t> nongpu_machines;
+
+  unsigned int gpu_machines_index;
+  unsigned int nongpu_machines_index;
 
 } TaskComboInfo_t;
 
@@ -57,6 +59,7 @@ static std::vector<unsigned int> machine_mips;
 static std::vector<bool> vm_is_migrating; // track if a vm is current migrating to a diff machine
 static std::vector<bool> machine_is_changing_state; // track if a machine is in the process of changing state
 static std::unordered_map<unsigned int, TaskComboInfo_t> taskCombos; // <task combo, <total instrs, list of possible VMs>>
+static std::vector<std::vector<VMId_t>> machine_to_active_vms;
 
 void Scheduler::PrintStuff() {
 
@@ -145,6 +148,10 @@ void Scheduler::PrintStuff() {
 
 
 void Scheduler::Init() {
+
+
+
+  cout << "begin init function" << endl;
   // Find the parameters of the clusters
   // Get the total number of machines
   // For each machine:
@@ -185,27 +192,37 @@ void Scheduler::Init() {
 
 
 
-
+  cout << "xyz1" << endl;
 
   SimOutput("Scheduler::Init(): Total number of machines is " +
     to_string(Machine_GetTotal()),
     3);
   SimOutput("Scheduler::Init(): Initializing scheduler", 1);
 
+  
 
   // here, we update each machines info, which we'll use to determine how many vms of each type to assign
   for (unsigned i = 0; i < total_machines; i++) {
     MachineInfo_t machine_info_i = Machine_GetInfo(MachineId_t(i));
     machines.push_back(MachineId_t(i));
+    
     unsigned int n_cpus = machine_info_i.num_cpus;
     
     unsigned int mips = machine_info_i.performance[default_cpu_performance_state];
     machine_mips.push_back((unsigned int)(n_cpus * mips));
 
     sim_has_gpus = sim_has_gpus || machine_info_i.gpus;
+
+    machine_to_active_vms.push_back(std::vector<VMId_t>(0));
   }
 
+  for (unsigned i = 0 ; i < total_machines; i++) {
+    for (unsigned j = 0; j < Machine_GetInfo(MachineId_t(i)).num_cpus; j++) {
+      Machine_SetCorePerformance(MachineId_t(i), j, CPUPerformance_t(default_cpu_performance_state));
+    }
+  }
 
+  cout << "xyz2" << endl;
 
   // gpu compatible tasks should only use gpu enabled machines?
 
@@ -223,72 +240,96 @@ void Scheduler::Init() {
     unsigned int taskcombo = taskInfo.gpu_capable * 100 + taskInfo.required_cpu * 10 + taskInfo.required_vm;
     taskCombos[taskcombo].total_tasks += 1;
     taskCombos[taskcombo].total_instructions += taskInfo.total_instructions;
-    taskCombos[taskcombo].gpu_vms_index = 0;
-    taskCombos[taskcombo].nongpu_vms_index = 0;
+    
   }
 
-
-
+  cout << "xyz3" << endl;
 
 
   
   
-  // 2 based on taskCombos, create <cpu + gpu, all potential vm> combos
-  unordered_map<unsigned int, vector<unsigned int>> machine_to_vm; // <machine xyz, all necessary vms>
+  // 2 based on taskCombos, create <cpu + gpu + vm, all potential machines> combos
+
   for (const auto& pair : taskCombos) {
     unsigned int taskcombo = pair.first;
+    cout << "tried combo: " << taskcombo << endl;
     
-    unsigned int taskcombo_gpu = taskcombo / 100;
-    unsigned int taskcombo_cpu = taskcombo / 10;
-    unsigned int taskcombo_vm = taskcombo % 10;
-    unsigned int cpu_gpu_combo = (taskcombo / 10) * 10;
+    int taskcombo_gpu = taskcombo / 100;
+    CPUType_t taskcombo_cpu = CPUType_t((taskcombo / 10) % 10);
+    VMType_t taskcombo_vm = VMType_t(taskcombo % 10);
     
-    machine_to_vm[cpu_gpu_combo].push_back(taskcombo_vm);
+    // repeat this process for every machine for every taskcombo
+    for (unsigned i = 0; i < total_machines; i++) {
+      MachineInfo_t machine_info = Machine_GetInfo(MachineId_t(i));
+      bool machine_gpu = machine_info.gpus;
+      CPUType_t machine_cpu = machine_info.cpu;
+      if (machine_cpu == taskcombo_cpu) {
+        // use task combo (cpu, gpu, and vm) as key
+        if (machine_gpu) {
+          taskCombos[taskcombo].gpu_machines.push_back(MachineId_t(i));
+        }
+        else {
+          taskCombos[taskcombo].nongpu_machines.push_back(MachineId_t(i));
+        }
+      }   
+    }
   }
+
+  for (const auto& pair : taskCombos) {
+    unsigned int taskcombo = pair.first;
+
+    bool taskcombo_gpu = taskcombo / 100;
+   
+    CPUType_t taskcombo_cpu = CPUType_t(taskcombo / 10);
+    VMType_t taskcombo_vm = VMType_t(taskcombo % 10);
+    
+    cout << "taskcombo(" << taskcombo << "): gpu_machines=" << taskCombos[taskcombo].gpu_machines.size() << " nongpu_machines=" << taskCombos[taskcombo].nongpu_machines.size() << endl;
+  }
+
+  // 3
+
   
   
   
+  cout << "xyz4" << endl;
   
   
 
   // 3 for every machine, add on VMs proportional to <cpu + gpu-> vm combos>
   // add in max # of vms. adding in more VMs doesn't cost more energy, only keeping entire machines on uses energy
-  unsigned machine_num = 0;
-  while (machine_num < total_machines) {
-    MachineInfo_t machineInfo = Machine_GetInfo(MachineId_t(machine_num));
-    unsigned cpu_gpu_combo = machineInfo.gpus * 100 + machineInfo.cpu * 10;
+  // unsigned machine_num = 0;
+  // while (machine_num < total_machines) {
+  //   MachineInfo_t machineInfo = Machine_GetInfo(MachineId_t(machine_num));
+  //   unsigned cpu_gpu_combo = machineInfo.gpus * 100 + machineInfo.cpu * 10;
     
-    CPUType_t cpuType = machineInfo.cpu;
-    unsigned num_cpus = machineInfo.num_cpus;
+  //   CPUType_t cpuType = machineInfo.cpu;
+  //   unsigned num_cpus = machineInfo.num_cpus;
 
-    for (unsigned i = 0; i < num_cpus; i++) {
-      machine_to_vm[]
-    }
-    vector<unsigned int> vm_pairs = machine_to_vm[cpuType];
-    VMType_t vmType = (VMType_t) vm_pairs[machine_num % vm_pairs.size()];
+  //   for (unsigned i = 0; i < num_cpus; i++) {
+  //     machine_to_vm[]
+  //   }
+  //   vector<unsigned int> vm_pairs = machine_to_vm[cpuType];
+  //   VMType_t vmType = (VMType_t) vm_pairs[machine_num % vm_pairs.size()];
 
-    vms.push_back(VM_Create(vmType, cpuType));
-    VM_Attach((VMId_t)machine_num, (MachineId_t)machine_num);
+  //   vms.push_back(VM_Create(vmType, cpuType));
+  //   VM_Attach((VMId_t)machine_num, (MachineId_t)machine_num);
 
-    // now that we have taskcombo (vm + cpu combo), we can add the current machine_num to our taskCombos
-    unsigned taskcombo = 10 * cpuType + vmType;
-    taskCombos[taskcombo].vm_candidates.push_back(machine_num);
+  //   // now that we have taskcombo (vm + cpu combo), we can add the current machine_num to our taskCombos
+  //   unsigned taskcombo = 10 * cpuType + vmType;
+  //   taskCombos[taskcombo].vm_candidates.push_back(machine_num);
     
-    machine_num++;
-  }
+  //   machine_num++;
+  // }
 
 
-  SimOutput("Scheduler::Init(): VM ids are " + to_string(vms[0]) + " ahd " +
-    to_string(vms[1]),
-    3);
-
-    cout << "reached end of init function" << endl;
+  cout << "reached end of init function" << endl;
 
 }
 
 void Scheduler::MigrationComplete(Time_t time, VMId_t vm_id) {
   // Update your data structure. The VM now can receive new tasks
 }
+
 
 void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
   // Get the task parameters
@@ -313,38 +354,52 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
   // -----round robin-----
   // search list of candidate_vms for a potential vm, keeping track of vm_index for RR
   // Find the correct resources for the task
+
+  cout << "started task: " << task_id << endl;
   TaskInfo_t task_info = GetTaskInfo(task_id);
   //get the correct resource to machine "vector"
 
-  TaskComboInfo_t taskComboInfo = taskCombos[task_info.required_cpu * 10 + task_info.required_vm];
-  vector<VMId_t> vm_candidates = taskComboInfo.vm_candidates;
+  TaskComboInfo_t taskComboInfo = taskCombos[task_info.gpu_capable * 100 + task_info.required_cpu * 10 + task_info.required_vm];
+  // cout << "taskComboInfo: " << taskComboInfo << endl;
+  //We have the taskCombo, we should find which GPU or NONGPU list of machines to use
+  vector<MachineId_t> machine_candidates = (task_info.gpu_capable) ? taskComboInfo.gpu_machines : taskComboInfo.nongpu_machines;
+  unsigned index = (task_info.gpu_capable) ? taskComboInfo.gpu_machines_index : taskComboInfo.nongpu_machines_index;
   
-  
+
   //cycle through every machine related to the resource to look for available vm
-
   while (true) {
-    VMInfo_t vm_candidate = VM_GetInfo(vm_candidates[taskComboInfo.vm_candidates_index]);
-    MachineInfo_t host_machine = Machine_GetInfo(vm_candidate.machine_id);
+    MachineInfo_t machine = Machine_GetInfo(machine_candidates[index]);
 
-    unsigned curr_vm_mem_remaining = host_machine.memory_size - host_machine.memory_used;
+    //check that this machine has enough memory first
+    if (machine.memory_size - machine.memory_used >= task_info.required_memory + 16) {
+      //Scan through the VMs to make sure it has the VM we require
+      vector<VMId_t> vm_candidates = machine_to_active_vms[machine.machine_id];
+      VMId_t toAdd = -1;
+      for (const auto& VM : vm_candidates) {
+        VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+        if (task_info.required_vm == vm_info.vm_type)
+          toAdd = VM;
+      }
+      //we did not find it so we must create the VM
+      if (toAdd == -1) {      
 
+        toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+        VM_Attach(toAdd, machine.machine_id);
 
-    if (curr_vm_mem_remaining >= task_info.required_memory) {
-      VM_AddTask(vm_candidate.vm_id, task_id, LOW_PRIORITY);
+      }
+      //now we have a VM to add the task to
+      VM_AddTask(toAdd, task_id, LOW_PRIORITY);
+
       break;
     }
-
-    taskComboInfo.vm_candidates_index += 1;
-    taskComboInfo.vm_candidates_index % (vm_candidates.size());
+    index++;
+    index = index % machine_candidates.size();
   }
+  if (task_info.gpu_capable == true)
+    taskComboInfo.gpu_machines_index = index;
+  else
+    taskComboInfo.nongpu_machines_index = index;
 
-  if (task_info.task_id % 10000 == 0) {
-    cout << "finished task " << task_id << endl;
-  }
-
-  if ((unsigned)now % 1000000 == 0) {
-    cout << "time (100M): " << time << endl;
-  }
 }
     // Skeleton code, you need to change it according to your algorithm
 
@@ -380,6 +435,12 @@ void Scheduler::TaskComplete(Time_t now, TaskId_t task_id) {
   SimOutput("Scheduler::TaskComplete(): Task " + to_string(task_id) +
     " is complete at " + to_string(now),
     4);
+
+    TaskInfo_t taskinfo = GetTaskInfo(TaskId_t(task_id));
+  if (unsigned(taskinfo.target_completion) < unsigned (now)) {
+    unsigned combo = 100 * taskinfo.gpu_capable + 10 * taskinfo.required_cpu + taskinfo.required_vm;
+    cout << "failed task id=" << task_id << ", combo=" << combo << endl;
+  }
 }
 
 // Public interface below
