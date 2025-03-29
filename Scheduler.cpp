@@ -354,8 +354,7 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
   // -----round robin-----
   // search list of candidate_vms for a potential vm, keeping track of vm_index for RR
   // Find the correct resources for the task
-
-  cout << "started task: " << task_id << endl;
+  cout << "started this task id: " << task_id << endl;
   TaskInfo_t task_info = GetTaskInfo(task_id);
   //get the correct resource to machine "vector"
 
@@ -364,41 +363,100 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
   //We have the taskCombo, we should find which GPU or NONGPU list of machines to use
   vector<MachineId_t> machine_candidates = (task_info.gpu_capable) ? taskComboInfo.gpu_machines : taskComboInfo.nongpu_machines;
   unsigned index = (task_info.gpu_capable) ? taskComboInfo.gpu_machines_index : taskComboInfo.nongpu_machines_index;
+    unsigned indexholder = index;
+  vector<MachineId_t> backup_candidates = (task_info.gpu_capable) ? taskComboInfo.nongpu_machines : taskComboInfo.gpu_machines;
+  unsigned backup_index = (task_info.gpu_capable) ? taskComboInfo.nongpu_machines_index : taskComboInfo.gpu_machines_index;
   
-
+    bool found = false;
   //cycle through every machine related to the resource to look for available vm
   while (true) {
-    MachineInfo_t machine = Machine_GetInfo(machine_candidates[index]);
+    // keep going through this loop until you find something suitable
 
-    //check that this machine has enough memory first
-    if (machine.memory_size - machine.memory_used >= task_info.required_memory + 16) {
-      //Scan through the VMs to make sure it has the VM we require
-      vector<VMId_t> vm_candidates = machine_to_active_vms[machine.machine_id];
-      VMId_t toAdd = -1;
-      for (const auto& VM : vm_candidates) {
-        VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
-        if (task_info.required_vm == vm_info.vm_type)
-          toAdd = VM;
-      }
-      //we did not find it so we must create the VM
-      if (toAdd == -1) {      
-
-        toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
-        VM_Attach(toAdd, machine.machine_id);
-
-      }
-      //now we have a VM to add the task to
-      VM_AddTask(toAdd, task_id, LOW_PRIORITY);
-
-      break;
+    //first check every single primary machine
+    do {
+        MachineInfo_t machine = Machine_GetInfo(machine_candidates[index]);
+        cout << "idnex at beginning is: " << index;
+        //check that this machine has enough memory first
+        if (machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
+            //Scan through the VMs to make sure it has the VM we require
+            vector<VMId_t> vm_candidates = machine_to_active_vms[machine.machine_id];
+            VMId_t toAdd = -1;
+            for (const auto& VM : vm_candidates) {
+                VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+                if (task_info.required_vm == vm_info.vm_type) {
+                    toAdd = VM;
+                    break;
+                }
+            }
+            cout << "to add is: " << toAdd;
+            //we did not find it so we must create the VM
+            if (toAdd == -1) {      
+                toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+                VM_Attach(toAdd, machine.machine_id);
+                machine_to_active_vms[machine.machine_id].push_back(toAdd);
+            }
+            cout << "toAdd now is: " << toAdd;
+            //now we have a VM to add the task to
+            VM_AddTask(toAdd, task_id, LOW_PRIORITY);
+            index++;
+            index = index % machine_candidates.size();
+            found = true;
+            break;
+        }
+        index++;
+        index = index % machine_candidates.size();
+    } while (index != indexholder);
+    if (found) {
+        break;
     }
-    index++;
-    index = index % machine_candidates.size();
+    
+
+    //otherwise check the backup machine
+    // if (!found && backup_candidates.size() != 0) {
+    //     do {
+    //         // cout << backup_index << endl;
+    //         MachineInfo_t backup_machine = Machine_GetInfo(backup_candidates[backup_index]);
+
+    //         //check that this machine has enough memory first
+    //         if (backup_machine.memory_size - backup_machine.memory_used >= task_info.required_memory + 8) {
+    //             //Scan through the VMs to make sure it has the VM we require
+    //             vector<VMId_t> vm_candidates = machine_to_active_vms[backup_machine.machine_id];
+    //             VMId_t toAdd = -1;
+    //             for (const auto& VM : vm_candidates) {
+    //                 VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+    //                 if (task_info.required_vm == vm_info.vm_type)
+    //                 toAdd = VM;
+    //             }
+    //             //we did not find it so we must create the VM
+    //             if (toAdd == -1) {      
+    //                 toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+    //                 VM_Attach(toAdd, backup_machine.machine_id);
+    //                 machine_to_active_vms[backup_machine.machine_id].push_back(toAdd);
+    //             }
+    //             //now we have a VM to add the task to
+    //             VM_AddTask(toAdd, task_id, LOW_PRIORITY);
+    //             found = true;
+    //             break;
+    //         }
+    //         backup_index++;
+    //         backup_index = backup_index % backup_candidates.size();
+    //     } while (backup_index != (task_info.gpu_capable) ? taskComboInfo.nongpu_machines_index : taskComboInfo.gpu_machines_index);
+    //     if (found)
+    //         break;
+    // }
   }
-  if (task_info.gpu_capable == true)
+
+  if (task_info.gpu_capable == true) {
+    cout << "previous index was: " << taskComboInfo.gpu_machines_index << endl;
     taskComboInfo.gpu_machines_index = index;
-  else
+    cout << "updated index is: " << taskComboInfo.gpu_machines_index << endl;
+    taskComboInfo.nongpu_machines_index = backup_index;
+  }
+  else {
     taskComboInfo.nongpu_machines_index = index;
+    taskComboInfo.gpu_machines_index = backup_index;
+  }
+
 
 }
     // Skeleton code, you need to change it according to your algorithm
