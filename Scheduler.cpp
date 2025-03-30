@@ -9,11 +9,12 @@
 #include <atomic>         // For std::atomic<unsigned>
 #include <thread>         // For std::this_thread::sleep_for()
 #include <chrono>         // For std::chrono::milliseconds
+#include <tuple>          // for your taskCombos map
+#include <unordered_map>
+#include <map>
+#include <algorithm>
 
 
-static bool migrating = false;
-static unsigned active_machines = 16;
-static unsigned machines_in_use = 1;
 
 // struct MachineLoad {
 //   MachineId_t id;
@@ -32,6 +33,25 @@ static unsigned machines_in_use = 1;
 //   return a.utilization < b.utilization;
 // }
 
+
+typedef struct {
+    vector<VMId_t> active_vms;
+    vector<unsigned int> total_mips;
+    bool changing_pstate; // is machine changing performance state
+    bool changing_cstate; // is machine changing power state
+  } MoreMachineInfo_t;
+
+static bool migrating = false;
+static std::unordered_map<MachineId_t, MoreMachineInfo_t> moreMachineInfo;
+static unsigned total_machines;
+static unsigned total_tasks;
+static CPUPerformance_t def_cpu_pstate;
+static std::map<unsigned int, std::vector<MachineId_t>> machines_by_mips;
+static std::unordered_map<unsigned int, unsigned int> performance_indexRR;
+static std::unordered_map<VMId_t, unsigned int> toMigrate;
+
+
+
 void Scheduler::Init() {
   // Find the parameters of the clusters
   // Get the total number of machines
@@ -42,101 +62,120 @@ void Scheduler::Init() {
   //      Get if there is a GPU or not
   //
   
-  SimOutput("Scheduler::Init(): Total number of machines is " +
-                to_string(Machine_GetTotal()),
-            3);
-  SimOutput("Scheduler::Init(): Initializing scheduler", 1);
+    SimOutput("Scheduler::Init(): Total number of machines is " +
+                    to_string(Machine_GetTotal()),
+                3);
+    SimOutput("Scheduler::Init(): Initializing scheduler", 1);
 
-  
-  
-  // create your VMs and attach them to hardware machines.
-  // init state of VM and machine is to fully turn on everything, setting every state to 0
-  for (unsigned i = 0; i < active_machines; i++)
-  vms.push_back(VM_Create(LINUX, X86));
-  for (unsigned i = 0; i < active_machines; i++) {
-    machines.push_back(MachineId_t(i));
-  }
-  for (unsigned i = 0; i < active_machines; i++) {
-    VM_Attach(vms[i], machines[i]);
-  }
+    total_machines = Machine_GetTotal();
+    def_cpu_pstate = P0;
+    total_tasks = GetNumTasks();
 
-  bool dynamic = true;
-  if (dynamic)
-    for (unsigned i = 0; i < 4; i++)
-      for (unsigned j = 0; j < 8; j++)
-        Machine_SetCorePerformance(MachineId_t(0), j, P3);
+    for (unsigned i = 0; i < total_machines; i++) {
+        MachineInfo_t M_info = Machine_GetInfo(MachineId_t(i));
+        cout << "just got info for machine: " << i << endl;
+        MoreMachineInfo_t& moreM_info = moreMachineInfo[MachineId_t(i)];
+        machines.push_back(MachineId_t(i));
 
-  // Turn off the ARM machines - see input file
-  for (unsigned i = 24; i < Machine_GetTotal(); i++) {
-    Machine_SetState(MachineId_t(i), S5);
-    // std::cout << "turning off arm machine " << i << std::endl;
-  }
+        cout << "pushed back onto machines for machine: " << i << endl;
 
+        // update total_mips
+        unsigned int n_cpus = M_info.num_cpus;
+        for (unsigned j = 0; j < 4; j++) {
+            moreM_info.total_mips.push_back(unsigned(n_cpus * M_info.performance[j]));
+        }
 
-  // MachineInfo_t machineInfo = Machine_GetInfo(machines[0]);
-  // std::cout << "current s state: " << machineInfo.s_state << std::endl;
-  // std::cout << "current p state: " << machineInfo.p_state << std::endl;
-  
-  // std::cout << "machine available memory: " << machineInfo.memory_size - machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+        //put machines into map based on power
+        machines_by_mips[M_info.performance[0]].push_back(MachineId_t(i));
+        performance_indexRR[M_info.performance[0]] = 0;
 
+        // this machine isn't changing state
+        moreM_info.changing_cstate = false;
+        moreM_info.changing_pstate = false;
 
-  SimOutput("Scheduler::Init(): VM ids are " + to_string(vms[0]) + " ahd " +
-                to_string(vms[1]),
-            3);
-
+        // set core performance
+        for (unsigned j = 0; j < Machine_GetInfo(MachineId_t(i)).num_cpus; j++) {
+        Machine_SetCorePerformance(MachineId_t(i), j, CPUPerformance_t(def_cpu_pstate));
+        }
+    }
+    cout << "get out of init" << endl;
 }
 
 void Scheduler::MigrationComplete(Time_t time, VMId_t vm_id) {
   // Update your data structure. The VM now can receive new tasks
+  //This vm has finished migrating
+  //take it off the toMigrate list
+  toMigrate.erase(vm_id);
+
 }
 
 void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
-  // Decide to attach the task to an existing VM,
-  //      vm.AddTask(taskid, Priority_T priority); or
-  // Create a new VM, attach the VM to a machine
-  //      VM vm(type of the VM)
-  //      vm.Attach(machine_id);
-  //      vm.AddTask(taskid, Priority_t priority) or
-  // Turn on a machine, create a new VM, attach it to the VM, then add the task
-  //
-  // Turn on a machine, migrate an existing VM from a loaded machine....
-  //
-  // Other possibilities as desired
+    // Decide to attach the task to an existing VM,
+    //      vm.AddTask(taskid, Priority_T priority); or
+    // Create a new VM, attach the VM to a machine
+    //      VM vm(type of the VM)
+    //      vm.Attach(machine_id);
+    //      vm.AddTask(taskid, Priority_t priority) or
+    // Turn on a machine, create a new VM, attach it to the VM, then add the task
+    //
+    // Turn on a machine, migrate an existing VM from a loaded machine....
+    //
+    // Other possibilities as desired
+    
 
-  if (migrating) {
-    VM_AddTask(vms[0], task_id, GetTaskInfo(task_id).priority);
-
-  } else {
-    // MachineInfo_t machineInfo = Machine_GetInfo(machines[task_id % active_machines]);
-    // std::cout << "machine " << task_id % active_machines << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-
-
-
-  // approach no. 2: greedy
-  // assign a task to a vm if it has enough memory for the task
-    bool addedTask = false;
-    MachineInfo_t machineInfo;
-    for (signed i = 0; i < machines_in_use; i++) {
-    // for (signed i = machines_in_use - 1; i >= 0; i--) {
-      machineInfo = Machine_GetInfo(MachineId_t(machines[i]));
-      unsigned memory_remaining = machineInfo.memory_size - machineInfo.memory_used;
-      if (memory_remaining >= GetTaskMemory(task_id) && memory_remaining >= machineInfo.memory_size / 2) {
-        std::cout << "machine " << i << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-        VM_AddTask(vms[i], task_id, GetTaskInfo(task_id).priority);
-        addedTask = true;
-        std::cout << "machine " << i << " used memory after adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-      }
+    /**
+     * The general idea here is to add the tasks to the weakest machines first
+     * We only migrate the VMs to the highest machines when they are in danger
+     * of not meeting the deadline. This logic will be implemented in 
+     * period check
+     */
+    TaskInfo_t task_info = GetTaskInfo(task_id);
+    bool found = false;
+    SLAType_t level = task_info.required_sla;
+    unsigned int current = 0;
+    //iterate through the different performance buckets
+    for (auto& [mips, machines] : machines_by_mips) {
+        unsigned int index = performance_indexRR[mips];
+        for (int i = 0; i < machines.size(); i++) {
+            //Scan each machine in this performance tier
+            MachineInfo_t machine = Machine_GetInfo(machines.at(index));
+            //check to make sure CPU and GPU requirements are the same
+            if (machine.cpu == task_info.required_cpu && machine.gpus == task_info.gpu_capable && machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
+                //check each VM inside this machine for space
+                //THIS IS JUST COPIED FROM RR CODE
+                vector<VMId_t>& vm_candidates = moreMachineInfo[index].active_vms;
+                VMId_t toAdd = -1;
+                for (const auto& VM : vm_candidates) {
+                    VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+                    if (task_info.required_vm == vm_info.vm_type && task_info.required_cpu == vm_info.cpu) {
+                        toAdd = VM;
+                        break;
+                    }
+                }
+                // if no useable VM, create one on this machine
+                if (toAdd == -1) {
+                    toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+                    VM_Attach(toAdd, machine.machine_id);
+                    vm_candidates.push_back(toAdd);
+                }
+                found = true;
+                if (level == SLA0) {
+                    VM_AddTask(toAdd, task_id, HIGH_PRIORITY);
+                } else if (level == SLA2 || level == SLA1) {
+                    VM_AddTask(toAdd, task_id, MID_PRIORITY);
+                } else {
+                    VM_AddTask(toAdd, task_id, LOW_PRIORITY);
+                }
+                //update next index for RR
+                performance_indexRR[mips] = (index + i + 1) % machines.size();
+            }
+            index = (index + i) % machines.size();
+            if (found) 
+                break;
+        }
+        if (found)
+            break;
     }
-
-    if (!addedTask) {
-      machines_in_use++;
-      std::cout << "new machine " << machines_in_use - 1 << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-
-      VM_AddTask(vms[machines_in_use - 1], task_id, GetTaskInfo(task_id).priority);
-      std::cout << "new machine " << machines_in_use - 1 << " used memory after adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-    }
-
-  }
 
 
 }
@@ -148,6 +187,84 @@ void Scheduler::PeriodicCheck(Time_t now) {
   // the scheduler, this one doesn't report any specific event Recommendation:
   // Take advantage of this function to do some monitoring and adjustments as
   // necessary
+  /**
+   * This method is called every 60000 "ticks"
+   * If we do not want to update the migration list that many times
+   * we can just mod the total time by like 120000 for half the times etc.
+   */
+
+    vector<VMId_t> local_copy;
+    //This is an arbitrary number and is subject to change
+    Time_t threshold = 1000;
+    //scan through every task to see what is about to be in SLA violation
+    for (auto& machine : machines) {
+        MachineInfo_t machine_info = Machine_GetInfo(machine);
+        vector<VMId_t>& vm_candidates = moreMachineInfo[machine].active_vms;
+        for (VMId_t VM : moreMachineInfo[machine].active_vms) {
+            bool migrate = false;
+            unsigned int vm_memory = 16;
+            for (TaskId_t task : VM_GetInfo(VM).active_tasks) {
+                unsigned int mips = machine_info.performance[machine_info.p_state];
+                unsigned int instructions_left = GetTaskInfo(task).remaining_instructions;
+                Time_t time_to_deadline = instructions_left / mips;
+                vm_memory += GetTaskInfo(task).required_memory;
+                //Don't want to touch the GPU tasks because they are a pain to deal with
+                //also set the priority to high because we want the tasks closer to deadline to finish quicker
+                if (!GetTaskInfo(task).gpu_capable && time_to_deadline < threshold) {
+                    SetTaskPriority(task, HIGH_PRIORITY);
+                    migrate = true;
+                }
+            }
+            //add the Vm to be migrated to a more powerful machine
+                //simultaneously delete the machine from active vms
+            if (migrate) {
+                local_copy.push_back(VM);
+                toMigrate[VM] = vm_memory;
+                vm_candidates.erase(std::remove(vm_candidates.begin(), vm_candidates.end(), VM), vm_candidates.end());
+            }
+        }
+    }
+
+    /**
+     * Once we finished scanning through all the tasks to figure out what VMs
+     * we need to focus on, we then deal with actually migrating all the VMs
+     * to higher power machines
+     */
+
+     //migrate all the VMs that are on toMigrate to the highest powered machine level
+     //in a RR format
+    while (!local_copy.empty()) {
+        VMId_t aboutToMigrate = local_copy.back();
+        VMInfo_t vm_info = VM_GetInfo(aboutToMigrate);
+        local_copy.pop_back();
+        bool found = false;
+        //Find a suitable machine
+        for (auto it = machines_by_mips.rbegin(); it != machines_by_mips.rend(); ++it) {
+            auto& [mips, machines] = *it;
+            unsigned int index = performance_indexRR[mips];
+            for (int i = 0; i < machines.size(); i++) {
+                //Scan each machine in this performance tier
+                MachineInfo_t machine = Machine_GetInfo(machines.at(index));
+                //check to make sure CPU and GPU requirements are the same
+                //TODO IDK WHY MACHINE 31 IS DYING LIKE THIS
+                if (machine.machine_id != 31 && machine.cpu == vm_info.cpu && machine.memory_size - machine.memory_used >= toMigrate[aboutToMigrate]) {
+                    cout << "Machine: " << machine.machine_id << " Free memory" <<  machine.memory_size - machine.memory_used << "Memory to be used: " <<toMigrate[aboutToMigrate]<< endl;
+                    //check each VM inside this machine for space
+                    //THIS IS JUST COPIED FROM RR CODE
+                    VM_Migrate(aboutToMigrate, machine.machine_id);
+                    performance_indexRR[mips] = (index + i + 1) % machines.size();
+                    found = true;
+                    break;
+                }
+                index = (index + i) % machines.size();
+            }
+            if (found)
+                break;
+        }
+    }
+
+
+
 }
 
 void Scheduler::Shutdown(Time_t time) {
@@ -178,6 +295,22 @@ void Scheduler::TaskComplete(Time_t now, TaskId_t task_id) {
   SimOutput("Scheduler::TaskComplete(): Task " + to_string(task_id) +
                 " is complete at " + to_string(now),
             4);
+
+    //lets just say every 100 tasks we go through ALL machines and just cleanup
+    //any VMs that have 0 tasks running on them
+    //TODO This doesn't work for some reason about AddTask() shenangins as well
+    // if (task_id % 100 == 0) {
+    //     for (auto& machine : machines) {
+    //         MachineInfo_t machine_info = Machine_GetInfo(machine);
+    //         vector<VMId_t>& vm_candidates = moreMachineInfo[machine].active_vms;
+    //         for (VMId_t VM : moreMachineInfo[machine].active_vms) {
+    //             VMInfo_t vm_info = VM_GetInfo(VM);
+    //             if (vm_info.active_tasks.size() == 0) {
+    //                 VM_Shutdown(VM);
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 // Public interface below
@@ -225,12 +358,12 @@ void SchedulerCheck(Time_t time) {
   SimOutput("SchedulerCheck(): SchedulerCheck() called at " + to_string(time),
             4);
   Scheduler.PeriodicCheck(time);
-  static unsigned counts = 0;
-  counts++;
-  if (counts == 10) {
-    migrating = true;
-    VM_Migrate(1, 9);
-  }
+//   static unsigned counts = 0;
+//   counts++;
+//   if (counts == 10) {
+//     migrating = true;
+//     VM_Migrate(1, 9);
+//   }
 }
 
 void SimulationComplete(Time_t time) {
