@@ -4,16 +4,15 @@
 //
 //  Created by ELMOOTAZBELLAH ELNOZAHY on 10/20/24.
 //
-
 #include "Scheduler.hpp"
 #include <atomic>         // For std::atomic<unsigned>
 #include <thread>         // For std::this_thread::sleep_for()
 #include <chrono>         // For std::chrono::milliseconds
+#include <tuple>          // for your taskCombos map
+#include <unordered_map>
+#include <map>
 
 
-static bool migrating = false;
-static unsigned active_machines = 16;
-static unsigned machines_in_use = 1;
 
 // struct MachineLoad {
 //   MachineId_t id;
@@ -32,6 +31,21 @@ static unsigned machines_in_use = 1;
 //   return a.utilization < b.utilization;
 // }
 
+typedef struct {
+    vector<VMId_t> active_vms;
+    vector<unsigned int> total_mips;
+    bool changing_pstate; // is machine changing performance state
+    bool changing_cstate; // is machine changing power state
+  } MoreMachineInfo_t;
+
+static bool migrating = false;
+static std::unordered_map<MachineId_t, MoreMachineInfo_t> moreMachineInfo;
+static unsigned total_machines;
+static unsigned total_tasks;
+static CPUPerformance_t def_cpu_pstate;
+static std::map<unsigned int, std::vector<MachineId_t>, std::greater<unsigned int>> machines_by_mips;
+static std::unordered_map<unsigned int, unsigned int> performance_indexRR;
+
 void Scheduler::Init() {
   // Find the parameters of the clusters
   // Get the total number of machines
@@ -48,42 +62,51 @@ void Scheduler::Init() {
   SimOutput("Scheduler::Init(): Initializing scheduler", 1);
 
   
+    // vars
+    total_machines = Machine_GetTotal();
+    def_cpu_pstate = P0;
+    total_tasks = GetNumTasks();
   
-  // create your VMs and attach them to hardware machines.
-  // init state of VM and machine is to fully turn on everything, setting every state to 0
-  for (unsigned i = 0; i < active_machines; i++)
-  vms.push_back(VM_Create(LINUX, X86));
-  for (unsigned i = 0; i < active_machines; i++) {
-    machines.push_back(MachineId_t(i));
-  }
-  for (unsigned i = 0; i < active_machines; i++) {
-    VM_Attach(vms[i], machines[i]);
-  }
-
-  bool dynamic = true;
-  if (dynamic)
-    for (unsigned i = 0; i < 4; i++)
-      for (unsigned j = 0; j < 8; j++)
-        Machine_SetCorePerformance(MachineId_t(0), j, P3);
-
-  // Turn off the ARM machines - see input file
-  for (unsigned i = 24; i < Machine_GetTotal(); i++) {
-    Machine_SetState(MachineId_t(i), S5);
-    // std::cout << "turning off arm machine " << i << std::endl;
-  }
-
-
-  // MachineInfo_t machineInfo = Machine_GetInfo(machines[0]);
-  // std::cout << "current s state: " << machineInfo.s_state << std::endl;
-  // std::cout << "current p state: " << machineInfo.p_state << std::endl;
   
-  // std::cout << "machine available memory: " << machineInfo.memory_size - machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+  
+    cout << "xyz1" << endl;
+  
+    SimOutput("Scheduler::Init(): Total number of machines is " +
+      to_string(Machine_GetTotal()),
+      3);
+    SimOutput("Scheduler::Init(): Initializing scheduler", 1);
+  
+  
+  
+    // update moreM_info
+    for (unsigned i = 0; i < total_machines; i++) {
+      MachineInfo_t M_info = Machine_GetInfo(MachineId_t(i));
+      cout << "just got info for machine: " << i << endl;
+      MoreMachineInfo_t& moreM_info = moreMachineInfo[MachineId_t(i)];
+      machines.push_back(MachineId_t(i));
 
+      cout << "pushed back onto machines for machine: " << i << endl;
+  
+      // update total_mips
+      unsigned int n_cpus = M_info.num_cpus;
+      for (unsigned j = 0; j < 4; j++) {
+        moreM_info.total_mips.push_back(unsigned(n_cpus * M_info.performance[j]));
+      }
 
-  SimOutput("Scheduler::Init(): VM ids are " + to_string(vms[0]) + " ahd " +
-                to_string(vms[1]),
-            3);
-
+      //put machines into map based on power
+      machines_by_mips[M_info.performance[0]].push_back(MachineId_t(i));
+      performance_indexRR[M_info.performance[0]] = 0;
+  
+      // this machine isn't changing state
+      moreM_info.changing_cstate = false;
+      moreM_info.changing_pstate = false;
+  
+      // set core performance
+      for (unsigned j = 0; j < Machine_GetInfo(MachineId_t(i)).num_cpus; j++) {
+        Machine_SetCorePerformance(MachineId_t(i), j, CPUPerformance_t(def_cpu_pstate));
+      }
+    }
+    cout << "get out of init" << endl;
 }
 
 void Scheduler::MigrationComplete(Time_t time, VMId_t vm_id) {
@@ -103,40 +126,100 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
   //
   // Other possibilities as desired
 
-  if (migrating) {
-    VM_AddTask(vms[0], task_id, GetTaskInfo(task_id).priority);
-
-  } else {
-    // MachineInfo_t machineInfo = Machine_GetInfo(machines[task_id % active_machines]);
-    // std::cout << "machine " << task_id % active_machines << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-
-
-
-  // approach no. 2: greedy
-  // assign a task to a vm if it has enough memory for the task
-    bool addedTask = false;
-    MachineInfo_t machineInfo;
-    for (signed i = 0; i < machines_in_use; i++) {
-    // for (signed i = machines_in_use - 1; i >= 0; i--) {
-      machineInfo = Machine_GetInfo(MachineId_t(machines[i]));
-      unsigned memory_remaining = machineInfo.memory_size - machineInfo.memory_used;
-      if (memory_remaining >= GetTaskMemory(task_id) && memory_remaining >= machineInfo.memory_size / 2) {
-        std::cout << "machine " << i << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-        VM_AddTask(vms[i], task_id, GetTaskInfo(task_id).priority);
-        addedTask = true;
-        std::cout << "machine " << i << " used memory after adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-      }
+  //Reasoning
+  /**
+   * SLA 0 High Priority SLA 1 Medium Priority
+   * only added to the most powerful machines
+   * If we can't find one on the most powerful, then we go down to the next level
+   * 
+   * 
+   */
+   TaskInfo_t task_info = GetTaskInfo(task_id);
+   SLAType_t level = task_info.required_sla;
+    bool found = false;
+    //find a suitable machine for SLA0 and 1
+    if (level == SLA0 || level == SLA1) {
+        unsigned int current = 0;
+        //iterate through the different performance buckets
+        for (auto& [mips, machines] : machines_by_mips) {
+            unsigned int index = performance_indexRR[mips];
+            for (int i = 0; i < machines.size(); i++) {
+                //Scan each machine in this performance tier
+                MachineInfo_t machine = Machine_GetInfo(machines.at(index));
+                //check to make sure CPU and GPU requirements are the same
+                if (machine.cpu == task_info.required_cpu && machine.gpus == task_info.gpu_capable && machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
+                    //check each VM inside this machine for space
+                    //THIS IS JUST COPIED FROM RR CODE
+                    vector<VMId_t>& vm_candidates = moreMachineInfo[index].active_vms;
+                    VMId_t toAdd = -1;
+                    for (const auto& VM : vm_candidates) {
+                        VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+                        if (task_info.required_vm == vm_info.vm_type && task_info.required_cpu == vm_info.cpu) {
+                            toAdd = VM;
+                            break;
+                        }
+                    }
+                    // if no useable VM, create one on this machine
+                    if (toAdd == -1) {
+                        toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+                        VM_Attach(toAdd, machine.machine_id);
+                        vm_candidates.push_back(toAdd);
+                    }
+                    found = true;
+                    VM_AddTask(toAdd, task_id, HIGH_PRIORITY);
+                    //update next index for RR
+                    performance_indexRR[mips] = (index + i + 1) % machines.size();
+                }
+                index = (index + i) % machines.size();
+                if (found) 
+                    break;
+            }
+            if (found)
+                break;
+        }
     }
 
-    if (!addedTask) {
-      machines_in_use++;
-      std::cout << "new machine " << machines_in_use - 1 << " used memory before adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
-
-      VM_AddTask(vms[machines_in_use - 1], task_id, GetTaskInfo(task_id).priority);
-      std::cout << "new machine " << machines_in_use - 1 << " used memory after adding task " << task_id << ": " << machineInfo.memory_used << " / " << machineInfo.memory_size << std::endl;
+    if (level == SLA2 || level == SLA3) {
+        unsigned int current = 0;
+        //iterate through the different performance buckets
+        for (auto it = machines_by_mips.rbegin(); it != machines_by_mips.rend(); ++it) {
+            auto& [mips, machines] = *it;
+            unsigned int index = performance_indexRR[mips];
+            for (int i = 0; i < machines.size(); i++) {
+                //Scan each machine in this performance tier
+                MachineInfo_t machine = Machine_GetInfo(machines.at(index));
+                //check to make sure CPU and GPU requirements are the same
+                if (machine.cpu == task_info.required_cpu && machine.gpus == task_info.gpu_capable && machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
+                    //check each VM inside this machine for space
+                    //THIS IS JUST COPIED FROM RR CODE
+                    vector<VMId_t>& vm_candidates = moreMachineInfo[index].active_vms;
+                    VMId_t toAdd = -1;
+                    for (const auto& VM : vm_candidates) {
+                        VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+                        if (task_info.required_vm == vm_info.vm_type && task_info.required_cpu == vm_info.cpu) {
+                            toAdd = VM;
+                            break;
+                        }
+                    }
+                    // if no useable VM, create one on this machine
+                    if (toAdd == -1) {
+                        toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+                        VM_Attach(toAdd, machine.machine_id);
+                        vm_candidates.push_back(toAdd);
+                    }
+                    found = true;
+                    VM_AddTask(toAdd, task_id, level == SLA2 ? MID_PRIORITY : LOW_PRIORITY);
+                    //update next index for RR
+                    performance_indexRR[mips] = (index + i + 1) % machines.size();
+                }
+                index = (index + i) % machines.size();
+                if (found) 
+                    break;
+            }
+            if (found)
+                break;
+        }
     }
-
-  }
 
 
 }
@@ -225,12 +308,12 @@ void SchedulerCheck(Time_t time) {
   SimOutput("SchedulerCheck(): SchedulerCheck() called at " + to_string(time),
             4);
   Scheduler.PeriodicCheck(time);
-  static unsigned counts = 0;
-  counts++;
-  if (counts == 10) {
-    migrating = true;
-    VM_Migrate(1, 9);
-  }
+//   static unsigned counts = 0;
+//   counts++;
+//   if (counts == 10) {
+//     migrating = true;
+//     VM_Migrate(1, 9);
+//   }
 }
 
 void SimulationComplete(Time_t time) {
