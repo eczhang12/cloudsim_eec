@@ -44,97 +44,11 @@ static CPUPerformance_t default_cpu_performance_state;
 
 
 // tbd
-static std::vector<unsigned int> machine_mips;
+
 static std::vector<bool> vm_is_migrating; // track if a vm is current migrating to a diff machine
 static std::vector<bool> machine_is_changing_state; // track if a machine is in the process of changing state
 static std::unordered_map<unsigned int, pair<unsigned int, vector<VMId_t>>> taskCombos; // <task combo, <total instrs, list of possible VMs>>
-
-void Scheduler::PrintStuff() {
-
-  // 
-  // printing task info
-  // 
-
-  // for (unsigned i = 0; i < total_tasks; i++) {
-  //   TaskInfo_t task_info_i = GetTaskInfo(TaskId_t(i));
-  //   cout << " task " << i << ": ";
-  //   cout << " start=" << task_info_i.arrival/1000;
-  //   cout << " req vm=" << task_info_i.required_vm;
-  //   cout << " req cpu=" << task_info_i.required_cpu;
-  //   cout << " req mem=" << task_info_i.required_memory;
-  //   cout << " req sla=" << task_info_i.required_sla;
-  //   cout << " instructions=" << task_info_i.total_instructions/1000000;
-  //   cout << endl;
-  // }
-
-  // 
-  // printing machine info
-  // 
-
-  // for (unsigned i = 0; i < Machine_GetTotal(); i++) {
-  //   MachineInfo_t machine_info_i = Machine_GetInfo(MachineId_t(i));
-  //   cout << " machine " << i << ": ";
-  //   cout << " cpus(" << machine_info_i.num_cpus << ")=" << to_string(machine_info_i.cpu);
-  //   cout << " memory=" << machine_info_i.memory_size;
-  //   cout << " gpu?=" << machine_info_i.gpus;
-  //   cout << " mips=" << machine_mips[i];
-  //   cout << endl;
-  // }
-
-
-  // 
-  // printing vm info
-  // 
-
-  // for (unsigned i = 0; i < total_machines; i++) {
-  //   VMInfo_t vm_info_i = VM_GetInfo(VMId_t(i));
-  //   cout << " vm " << i << ": ";
-  //   cout << " active tasks=" << vm_info_i.active_tasks.size();
-  //   cout << " type=" << to_string(vm_info_i.vm_type);
-  //   cout << " cpu=" << to_string(vm_info_i.cpu);
-  //   cout << endl;
-  // }
-
-
-    // 
-  // print taskcombo tasks per combo
-  // 
-
-//   for (const auto& pair : taskCombos) {
-//     unsigned int taskcombo = pair.first;
-//     unsigned int taskcombo_cpu = taskcombo / 10;
-//     unsigned int taskcombo_vm = taskcombo % 10;
-//     unsigned int tasks_of_combo = pair.second.first;
-
-//     cout << to_string((CPUType_t) taskcombo_cpu) << " " << to_string((VMType_t) taskcombo_vm) << " :" << tasks_of_combo << endl;
-// }
-
-  // 
-  // print vms for each taskcombo
-  // 
-
-  // for (const auto& pair : taskCombos) {
-  //   unsigned int taskcombo = pair.first;
-  //   unsigned int taskcombo_cpu = taskcombo / 10;
-  //   unsigned int taskcombo_vm = taskcombo % 10;
-
-  //   cout << "taskcombo: cpu("<< taskcombo_cpu <<") vm("<< taskcombo_vm<<") avail vms:";
-
-  //   for (unsigned i = 0; i < taskCombos[taskcombo].second.size(); i++) {
-  //     cout << taskCombos[taskcombo].second[i] << " ";
-  //   }
-  //   cout << endl;
-  // }
-
-
-  // for (unsigned i = 0; i < vms.size(); i++) {
-  //   cout << "vm " << i << ": " << VM_GetInfo(vms[i]).vm_type << endl;
-  // }
-
-
-}
-
-
+static std::unordered_map<MachineId_t, vector<VMId_t>> machine_to_active_vms;
 void Scheduler::Init() {
   // Find the parameters of the clusters
   // Get the total number of machines
@@ -187,10 +101,6 @@ void Scheduler::Init() {
   for (unsigned i = 0; i < total_machines; i++) {
     MachineInfo_t machine_info_i = Machine_GetInfo(MachineId_t(i));
     machines.push_back(MachineId_t(i));
-    unsigned int n_cpus = machine_info_i.num_cpus;
-    
-    unsigned int mips = machine_info_i.performance[default_cpu_performance_state];
-    machine_mips.push_back((unsigned int)(n_cpus * mips));
   }
 
 
@@ -207,7 +117,7 @@ void Scheduler::Init() {
     // std::get<1>(taskCombos[taskcombo]) += 1; // if u use a tuple
   }
 
-  
+
 
   // 2 based on taskCombos, create <cpu, vm> 
   vector<vector<unsigned int>> machine_to_vm (4); // <machine xyz, all necessary vms>
@@ -221,25 +131,17 @@ void Scheduler::Init() {
 
 
 
+  // 3. for every machine, give it all possible VMS
+  for (unsigned i = 0; i < Machine_GetTotal(); i++) {
+    MachineInfo_t machineInfo = Machine_GetInfo(MachineId_t(i));
 
-
-  // 3. associate each task type with useable VMs
-  // for every machine, give it a single vm based on machine_num % vm_candidates
-  unsigned machine_num = 0;
-  while (machine_num < total_machines) {
-    MachineInfo_t machineInfo = Machine_GetInfo(MachineId_t(machine_num));
-    CPUType_t cpuType = machineInfo.cpu;
-    vector<unsigned int> vm_candidates = machine_to_vm[cpuType];
-
-    VMType_t vmType = (VMType_t) vm_candidates[machine_num % vm_candidates.size()];
-    vms.push_back(VM_Create(vmType, cpuType));
-    VM_Attach((VMId_t)machine_num, (MachineId_t)machine_num);
-
-    // now that we have taskcombo (vm + cpu combo), we can add the current machine_num to our taskCombos
-    unsigned taskcombo = 10 * cpuType + vmType;
-    taskCombos[taskcombo].second.push_back(machine_num);
-    
-    machine_num++;
+    vector<unsigned int>& candidate_vms = machine_to_vm[machineInfo.cpu];
+    for (unsigned j = 0; j < candidate_vms.size(); j++) {
+      VMId_t vm_id = VM_Create(VMType_t(j), CPUType_t(machineInfo.cpu)); 
+      vms.push_back(vm_id);
+      VM_Attach(vm_id, (MachineId_t)i);
+      machine_to_active_vms[i].push_back(vm_id);
+    }
   }
 
 
@@ -321,27 +223,31 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
   //
   // Other possibilities as desired    
 
-  Priority_t priority = (task_id == 0 || task_id == 64) ? HIGH_PRIORITY : MID_PRIORITY;
   //Greedy algorithm based on memory
   // Find the correct resources for the task
   TaskInfo_t task_info = GetTaskInfo(task_id);
+  Priority_t priority = (task_info.required_sla == SLA0 || task_info.required_sla == SLA1) ? HIGH_PRIORITY : LOW_PRIORITY;
   //get the correct resource to machine "vector"
-  vector<VMId_t> vms = taskCombos[task_info.required_cpu * 10 + task_info.required_vm].second;
-  //cycle through every machine related to the resource to look for available memory
 
-  for (const auto vm : vms) {
-    VMInfo_t vm_info = VM_GetInfo(vm);
-    MachineInfo_t machine_info = Machine_GetInfo(vm_info.machine_id);
-    unsigned memory_remaining = machine_info.memory_size - machine_info.memory_used;
-    if (memory_remaining >= task_info.required_memory) {
-      VM_AddTask(vm_info.vm_id, task_id, priority);
-      break;
+  bool added_task = false;
+  for (unsigned i = 0; i < Machine_GetTotal(); i++) {
+    MachineInfo_t M_info = Machine_GetInfo(i);
+
+    if (added_task) break;
+    vector<VMId_t>& candidate_vms = machine_to_active_vms[i];
+    for (unsigned j = 0; j < candidate_vms.size(); j++) {
+      if (task_info.required_vm == VM_GetInfo(candidate_vms[j]).vm_type && task_info.required_cpu == M_info.cpu && M_info.memory_size - M_info.memory_used >= task_info.required_memory + 8) {
+        VM_AddTask(machine_to_active_vms[i][j], task_id, priority);
+        added_task = true;
+        break;
+      }
     }
+
   }
 
-  if (task_info.task_id % 10000 == 0) {
-    cout << "finished task " << task_id << endl;
-  }
+  if (task_id % 10000 == 0) cout << "started task=" << task_id << endl;
+  
+  
 }
     // Skeleton code, you need to change it according to your algorithm
 
@@ -377,6 +283,9 @@ void Scheduler::TaskComplete(Time_t now, TaskId_t task_id) {
   SimOutput("Scheduler::TaskComplete(): Task " + to_string(task_id) +
     " is complete at " + to_string(now),
     4);
+
+    if (task_id % 10000 == 0) cout << "ended task=" << task_id << endl;
+
 }
 
 // Public interface below
