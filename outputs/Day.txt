@@ -1,0 +1,27 @@
+xyz1
+pushed back machine=0
+pushed back machine=1
+pushed back machine=2
+pushed back machine=3
+pushed back machine=4
+pushed back machine=5
+pushed back machine=6
+pushed back machine=7
+pushed back machine=8
+pushed back machine=9
+pushed back machine=10
+pushed back machine=11
+pushed back machine=12
+pushed back machine=13
+pushed back machine=14
+pushed back machine=15
+pushed back machine=16
+pushed back machine=17
+pushed back machine=18
+pushed back machine=19
+pushed back machine=20
+pushed back machine=21
+pushed back machine=22
+pushed back machine=23
+exitted init
+total # of tasks=481258

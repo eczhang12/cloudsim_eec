@@ -1,0 +1,346 @@
+xyz1
+pushed back machine=0
+pushed back machine=1
+pushed back machine=2
+pushed back machine=3
+pushed back machine=4
+pushed back machine=5
+pushed back machine=6
+pushed back machine=7
+pushed back machine=8
+pushed back machine=9
+pushed back machine=10
+pushed back machine=11
+pushed back machine=12
+pushed back machine=13
+pushed back machine=14
+pushed back machine=15
+pushed back machine=16
+pushed back machine=17
+pushed back machine=18
+pushed back machine=19
+pushed back machine=20
+pushed back machine=21
+pushed back machine=22
+pushed back machine=23
+pushed back machine=24
+pushed back machine=25
+pushed back machine=26
+pushed back machine=27
+pushed back machine=28
+pushed back machine=29
+pushed back machine=30
+pushed back machine=31
+pushed back machine=32
+pushed back machine=33
+pushed back machine=34
+pushed back machine=35
+pushed back machine=36
+pushed back machine=37
+pushed back machine=38
+pushed back machine=39
+exitted init
+total # of tasks=128
+started task=0
+started task=1
+started task=2
+started task=3
+started task=4
+started task=5
+started task=6
+started task=7
+started task=8
+started task=9
+started task=10
+started task=11
+started task=12
+started task=13
+started task=14
+started task=15
+started task=16
+started task=17
+started task=18
+started task=19
+started task=20
+started task=21
+started task=22
+started task=23
+started task=24
+started task=25
+started task=26
+started task=27
+started task=28
+started task=29
+started task=30
+started task=31
+started task=32
+started task=33
+started task=34
+started task=35
+started task=36
+started task=37
+started task=38
+started task=39
+started task=40
+started task=41
+started task=42
+started task=43
+started task=44
+started task=45
+started task=46
+started task=47
+started task=48
+started task=49
+started task=50
+started task=51
+started task=52
+started task=53
+started task=54
+started task=55
+started task=56
+started task=57
+started task=58
+started task=59
+started task=60
+started task=61
+started task=62
+started task=63
+started task=64
+started task=65
+started task=66
+started task=67
+started task=68
+started task=69
+started task=70
+started task=71
+started task=72
+started task=73
+started task=74
+started task=75
+started task=76
+started task=77
+started task=78
+started task=79
+started task=80
+started task=81
+started task=82
+started task=83
+started task=84
+started task=85
+started task=86
+started task=87
+started task=88
+started task=89
+started task=90
+started task=91
+started task=92
+started task=93
+started task=94
+started task=95
+started task=96
+started task=97
+started task=98
+started task=99
+started task=100
+started task=101
+started task=102
+started task=103
+started task=104
+started task=105
+started task=106
+started task=107
+started task=108
+started task=109
+started task=110
+started task=111
+started task=112
+started task=113
+started task=114
+started task=115
+started task=116
+started task=117
+started task=118
+started task=119
+started task=120
+started task=121
+started task=122
+started task=123
+started task=124
+started task=125
+started task=126
+started task=127
+ -----INFORMATION about task 127:  start=802005 taskCombo=30 req vm=0 req cpu=3 req mem=8 req sla=0 instructions=2410629000
+ -----INFRMATION about machine 0:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 1:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 2:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 3:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 4:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 5:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 6:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 7:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 8:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 9:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 10:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 11:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 12:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 13:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 14:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 15:  cpus(8)=3 memory=16384 gpu?=1
+ -----INFRMATION about machine 16:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 17:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 18:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 19:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 20:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 21:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 22:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 23:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 24:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 25:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 26:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 27:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 28:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 29:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 30:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 31:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 32:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 33:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 34:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 35:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 36:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 37:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 38:  cpus(16)=0 memory=16384 gpu?=1
+ -----INFRMATION about machine 39:  cpus(16)=0 memory=16384 gpu?=1
+finished task=2 at time=1414332
+finished task=10 at time=1558520
+finished task=0 at time=1673000
+finished task=8 at time=1844276
+finished task=11 at time=1862770
+finished task=7 at time=1940655
+finished task=12 at time=2017479
+finished task=6 at time=2138047
+finished task=1 at time=2146953
+finished task=3 at time=2444171
+finished task=5 at time=2463387
+finished task=9 at time=2628609
+finished task=13 at time=3715244
+finished task=42 at time=4551300
+finished task=44 at time=4581180
+finished task=16 at time=4673541
+finished task=38 at time=4736015
+finished task=36 at time=4948165
+finished task=34 at time=5040328
+finished task=26 at time=5204630
+finished task=74 at time=5216433
+finished task=73 at time=5224841
+finished task=61 at time=5306205
+finished task=54 at time=5321434
+finished task=90 at time=5398842
+finished task=76 at time=5418902
+finished task=106 at time=5449620
+finished task=118 at time=5549315
+finished task=102 at time=5585104
+finished task=21 at time=5598583
+finished task=55 at time=5630439
+finished task=77 at time=5660404
+finished task=19 at time=5666510
+finished task=100 at time=5673307
+finished task=49 at time=5704151
+finished task=113 at time=5801058
+finished task=107 at time=5835661
+finished task=39 at time=5908756
+finished task=41 at time=6002292
+finished task=71 at time=6064153
+finished task=91 at time=6077094
+finished task=22 at time=6093696
+finished task=15 at time=6195142
+finished task=69 at time=6271812
+finished task=14 at time=6358389
+finished task=30 at time=6367096
+finished task=33 at time=6470206
+finished task=59 at time=6473994
+finished task=92 at time=6536682
+finished task=117 at time=6545946
+finished task=50 at time=6548715
+finished task=37 at time=6577735
+finished task=48 at time=6602877
+finished task=98 at time=6611692
+finished task=121 at time=6694990
+finished task=84 at time=6743164
+finished task=58 at time=6760608
+finished task=25 at time=6783475
+finished task=17 at time=6848601
+finished task=23 at time=6864708
+finished task=60 at time=6891158
+finished task=78 at time=6923364
+finished task=97 at time=6945417
+finished task=126 at time=6953865
+finished task=29 at time=6992853
+finished task=111 at time=7003780
+finished task=68 at time=7096627
+finished task=4 at time=7114768
+finished task=72 at time=7120752
+finished task=66 at time=7123641
+finished task=70 at time=7145373
+finished task=18 at time=7154309
+finished task=65 at time=7159511
+finished task=35 at time=7186321
+finished task=62 at time=7191034
+finished task=81 at time=7195738
+finished task=93 at time=7197308
+finished task=53 at time=7215645
+finished task=43 at time=7234141
+finished task=101 at time=7246812
+finished task=94 at time=7252723
+finished task=85 at time=7280510
+finished task=57 at time=7304230
+finished task=46 at time=7310424
+finished task=32 at time=7315625
+finished task=105 at time=7331385
+finished task=56 at time=7356092
+finished task=45 at time=7366353
+finished task=82 at time=7388040
+finished task=20 at time=7419204
+finished task=27 at time=7427448
+finished task=89 at time=7451692
+finished task=24 at time=7454670
+finished task=28 at time=7490463
+finished task=125 at time=7520128
+finished task=52 at time=7521976
+finished task=86 at time=7544222
+finished task=122 at time=7555465
+finished task=109 at time=7556873
+finished task=51 at time=7576427
+finished task=110 at time=7585446
+finished task=120 at time=7640776
+finished task=114 at time=7670652
+finished task=124 at time=7717558
+finished task=115 at time=7734814
+finished task=108 at time=7744847
+finished task=40 at time=7746433
+finished task=96 at time=7768696
+finished task=123 at time=7775742
+finished task=95 at time=7827766
+finished task=47 at time=7832532
+finished task=116 at time=7861355
+finished task=80 at time=7889073
+finished task=31 at time=7931252
+finished task=64 at time=7934997
+finished task=63 at time=7949481
+finished task=112 at time=7967858
+finished task=87 at time=7974718
+finished task=119 at time=8023293
+finished task=67 at time=8027802
+finished task=79 at time=8067289
+finished task=88 at time=8091611
+finished task=127 at time=8096950
+finished task=99 at time=8137317
+finished task=104 at time=8165927
+finished task=103 at time=8208123
+finished task=83 at time=8233452
+finished task=75 at time=8258119
+SLA violation report
+SLA0 : 0%
+SLA1 : 0%
+SLA2 : 0%
+Total Energy 0.0152327KW-Hour
+Simulation run finished in 8.28 seconds
