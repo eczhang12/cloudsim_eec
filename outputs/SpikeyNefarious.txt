@@ -1,0 +1,10 @@
+true: 1
+false: 0
+reached end of init function
+finished task 0
+SLA violation report
+SLA0 : 70.1587%
+SLA1 : 56.0976%
+SLA2 : 0%
+Total Energy 0.0408727KW-Hour
+Simulation run finished in 62.04 seconds
