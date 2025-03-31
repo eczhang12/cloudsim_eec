@@ -9,7 +9,7 @@ machine class:
         P-States: [12, 8, 6, 4]
         C-States: [12, 3, 1, 0]
         MIPS: [1000, 800, 600, 400]
-        GPUs: yes
+        GPUs: no
 }
 
 

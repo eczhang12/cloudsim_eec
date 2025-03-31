@@ -355,15 +355,13 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
 
   bool found = false;
   //cycle through every candidate machine to find host vm
-
   for (unsigned iterations = 0; iterations < machine_candidates.size(); iterations++) {
-    cout << "it=" << iterations << " machine used=" << machine_candidates[index] << " gpu-cap task?=" << task_info.gpu_capable << endl;
     MachineInfo_t machine = Machine_GetInfo(machine_candidates[index]);
     // cout << "idnex at beginning is: " << index;
     // if machine has enough memory
     if (machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
       // find useable VM
-      vector<VMId_t>& vm_candidates = moreMachineInfo[index].active_vms;
+      vector<VMId_t>& vm_candidates = moreMachineInfo[machine_candidates[index]].active_vms;
       VMId_t toAdd = -1;
       for (const auto& VM : vm_candidates) {
         VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
@@ -383,13 +381,9 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
       index = (index + 1) % machine_candidates.size();
       found = true;
 
-      if (machine.gpus && task_info.gpu_capable) {
+      if (machine.gpus) {
         taskComboInfo.gpu_machines_index = index;
-      }
-      else if (machine.gpus && !task_info.gpu_capable || !machine.gpus && task_info.gpu_capable) {
-        cout << "mixed"; // tbd the case where nongpu tasks can use gpu machines, not done yet
-      }
-      else {
+      } else {
         taskComboInfo.nongpu_machines_index = index;
       }
 
@@ -400,44 +394,69 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
       // we found a vm and added a task to it. break
       break;
     }
-
-
+    index = (index + 1) % machine_candidates.size();
   }
 
 
   //otherwise check the backup machine
-  // if (!found && backup_candidates.size() != 0) {
-  //     do {
-  //         // cout << backup_index << endl;
-  //         MachineInfo_t backup_machine = Machine_GetInfo(backup_candidates[backup_index]);
+  if (!found && backup_candidates.size() != 0) {
+    cout << "We enter here" << endl;
+    for (unsigned iterations = 0; iterations < backup_candidates.size(); iterations++) {
+        cout << "backup index is: " << backup_index << endl;
+        MachineInfo_t machine = Machine_GetInfo(backup_candidates[backup_index]);
+        // cout << "idnex at beginning is: " << index;
+        // if machine has enough memory
+        if (machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
+          // find useable VM
+          vector<VMId_t>& vm_candidates = moreMachineInfo[backup_candidates[backup_index]].active_vms;
+          VMId_t toAdd = -1;
+          for (const auto& VM : vm_candidates) {
+            VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+            if (task_info.required_vm == vm_info.vm_type) {
+              toAdd = VM;
+              break;
+            }
+          }
+          // if no useable VM, create one on this machine
+          if (toAdd == -1) {
+            cout << "we did not find a suitable vm" << endl;
+            toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+            VM_Attach(toAdd, machine.machine_id);
+            vm_candidates.push_back(toAdd);
+          }
+          //now we have a VM to add the task to
+          VM_AddTask(toAdd, task_id, LOW_PRIORITY);
+          backup_index = (backup_index + 1) % backup_candidates.size();
+          found = true;
+    
+          //update the index
+          if (machine.gpus) {
+            taskComboInfo.gpu_machines_index = backup_index;
+          } else {
+            taskComboInfo.nongpu_machines_index = backup_index;
+          }
 
-  //         //check that this machine has enough memory first
-  //         if (backup_machine.memory_size - backup_machine.memory_used >= task_info.required_memory + 8) {
-  //             //Scan through the VMs to make sure it has the VM we require
-  //             vector<VMId_t> vm_candidates = machine_to_active_vms[backup_machine.machine_id];
-  //             VMId_t toAdd = -1;
-  //             for (const auto& VM : vm_candidates) {
-  //                 VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
-  //                 if (task_info.required_vm == vm_info.vm_type)
-  //                 toAdd = VM;
-  //             }
-  //             //we did not find it so we must create the VM
-  //             if (toAdd == -1) {      
-  //                 toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
-  //                 VM_Attach(toAdd, backup_machine.machine_id);
-  //                 machine_to_active_vms[backup_machine.machine_id].push_back(toAdd);
-  //             }
-  //             //now we have a VM to add the task to
-  //             VM_AddTask(toAdd, task_id, LOW_PRIORITY);
-  //             found = true;
-  //             break;
-  //         }
-  //         backup_index++;
-  //         backup_index = backup_index % backup_candidates.size();
-  //     } while (backup_index != (task_info.gpu_capable) ? taskComboInfo.nongpu_machines_index : taskComboInfo.gpu_machines_index);
-  //     if (found)
-  //         break;
-  // }
+        //   if (machine.gpus && task_info.gpu_capable) {
+        //     taskComboInfo.gpu_machines_index = index;
+        //   }
+        //   else if (machine.gpus && !task_info.gpu_capable || !machine.gpus && task_info.gpu_capable) {
+        //     cout << "mixed"; // tbd the case where nongpu tasks can use gpu machines, not done yet
+        //   }
+        //   else {
+        //     taskComboInfo.nongpu_machines_index = index;
+        //   }
+    
+          // update moreTaskInfo data structure for loggin purposes in the future
+          moreTaskInfo[task_id].machine_ran_on = machine.machine_id;
+          moreTaskInfo[task_id].vm_ran_on = toAdd;
+    
+          // we found a vm and added a task to it. break
+          break;
+        }
+        backup_index = (backup_index + 1) % backup_candidates.size();
+      }
+    
+  }
 
 
 }
@@ -460,21 +479,6 @@ void Scheduler::Shutdown(Time_t time) {
   // Report about the SLA compliance
   // Shutdown everything to be tidy :-)
 
-
-
-
-
-
-  for (unsigned i = 0; i < total_machines; i++) {
-
-    cout << "machine " << i << ": ";
-
-    for (unsigned j = 0; j < moreMachineInfo[MachineId_t(i)].active_vms.size(); j++) {
-      cout << " " << moreMachineInfo[MachineId_t(i)].active_vms[j] << " ";
-    }
-
-    cout << endl;
-  }
 
 
 
