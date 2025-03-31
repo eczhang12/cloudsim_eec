@@ -48,7 +48,17 @@ static unsigned total_tasks;
 static CPUPerformance_t def_cpu_pstate;
 static std::map<unsigned int, std::vector<MachineId_t>> machines_by_mips;
 static std::unordered_map<unsigned int, unsigned int> performance_indexRR;
+/**
+ * Stores the VM key and the memory that the VM takes up (8 + all the tasks required memory)
+ */
 static std::unordered_map<VMId_t, unsigned int> toMigrate;
+/**
+ * The idea behind pending migration is that when we call VM_migrate, it takes
+ * some time for the VM to show up on the machine and thus the memory it will 
+ * take up in the future does not show up. This is to keep track of what Vms
+ * are currently waiting to be put on a specific machine
+ */
+static std::unordered_map<MachineId_t, std::vector<VMId_t>> pendingMigration;
 
 
 
@@ -104,8 +114,11 @@ void Scheduler::Init() {
 void Scheduler::MigrationComplete(Time_t time, VMId_t vm_id) {
   // Update your data structure. The VM now can receive new tasks
   //This vm has finished migrating
-  //take it off the toMigrate list
+  //take the VM off the toMigrate list
   toMigrate.erase(vm_id);
+  
+  //update the Machine pending migration list to get rid of the VM that just got migrated
+  pendingMigration[VM_GetInfo(vm_id).machine_id].erase(std::remove(pendingMigration[VM_GetInfo(vm_id).machine_id].begin(), pendingMigration[VM_GetInfo(vm_id).machine_id].end(), vm_id), pendingMigration[VM_GetInfo(vm_id).machine_id].end());
 
 }
 
@@ -136,8 +149,8 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
     //iterate through the different performance buckets
     for (auto& [mips, machines] : machines_by_mips) {
         unsigned int index = performance_indexRR[mips];
+        //Scan each machine in the current performance tier
         for (int i = 0; i < machines.size(); i++) {
-            //Scan each machine in this performance tier
             MachineInfo_t machine = Machine_GetInfo(machines.at(index));
             //check to make sure CPU and GPU requirements are the same
             if (machine.cpu == task_info.required_cpu && machine.gpus == task_info.gpu_capable && machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
@@ -169,7 +182,7 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
                 //update next index for RR
                 performance_indexRR[mips] = (index + i + 1) % machines.size();
             }
-            index = (index + i) % machines.size();
+            index = (index + 1) % machines.size();
             if (found) 
                 break;
         }
@@ -193,33 +206,53 @@ void Scheduler::PeriodicCheck(Time_t now) {
    * we can just mod the total time by like 120000 for half the times etc.
    */
 
+
+   /**
+    * local_copy is used to maintain the list of vms that need to be migrated within the current periodic check
+    */
     vector<VMId_t> local_copy;
     //This is an arbitrary number and is subject to change
+    // TODO - Unsure of how to deal with math surrounding threshold and WHEN to migrate the VM based on tasks expected deadline, and its current trajectory
     Time_t threshold = 1000;
     //scan through every task to see what is about to be in SLA violation
     for (auto& machine : machines) {
         MachineInfo_t machine_info = Machine_GetInfo(machine);
         vector<VMId_t>& vm_candidates = moreMachineInfo[machine].active_vms;
-        for (VMId_t VM : moreMachineInfo[machine].active_vms) {
+        for (VMId_t VM : vm_candidates) {
+            VMInfo_t vm_info = VM_GetInfo(VM);
+            //handle a periodic cleanup so Dead VMs don't pile up
+            if (vm_info.active_tasks.empty()) {
+                VM_Shutdown(VM);
+                vm_candidates.erase(std::remove(vm_candidates.begin(), vm_candidates.end(), VM), vm_candidates.end());
+                continue;
+            }
+            //Assuming the VM isn't dead, we will check all of its tasks
             bool migrate = false;
-            unsigned int vm_memory = 16;
-            for (TaskId_t task : VM_GetInfo(VM).active_tasks) {
+            unsigned int vm_memory = 8; // get the memory of the vm + tasks_required memory
+            for (TaskId_t task : vm_info.active_tasks) {
+                
+                //TODO Not sure what the frick is going on here in terms of math and when to migrate
                 unsigned int mips = machine_info.performance[machine_info.p_state];
                 unsigned int instructions_left = GetTaskInfo(task).remaining_instructions;
                 Time_t time_to_deadline = instructions_left / mips;
-                vm_memory += GetTaskInfo(task).required_memory;
+
                 //Don't want to touch the GPU tasks because they are a pain to deal with
                 //also set the priority to high because we want the tasks closer to deadline to finish quicker
-                if (!GetTaskInfo(task).gpu_capable && time_to_deadline < threshold) {
+                if (!GetTaskInfo(task).gpu_capable && time_to_deadline < threshold) { // TODO Dunno what conditions to check when migrating
                     SetTaskPriority(task, HIGH_PRIORITY);
                     migrate = true;
                 }
+                //TODO
+                
+                //this is just summing up the total memory of vm
+                vm_memory += GetTaskInfo(task).required_memory;
+                
             }
             //add the Vm to be migrated to a more powerful machine
-                //simultaneously delete the machine from active vms
+            //simultaneously delete the machine from active vms
             if (migrate) {
                 local_copy.push_back(VM);
-                toMigrate[VM] = vm_memory;
+                toMigrate[VM] += vm_memory;
                 vm_candidates.erase(std::remove(vm_candidates.begin(), vm_candidates.end(), VM), vm_candidates.end());
             }
         }
@@ -231,7 +264,7 @@ void Scheduler::PeriodicCheck(Time_t now) {
      * to higher power machines
      */
 
-     //migrate all the VMs that are on toMigrate to the highest powered machine level
+     //migrate all the VMs that are on local copy to the highest powered machine level
      //in a RR format
     while (!local_copy.empty()) {
         VMId_t aboutToMigrate = local_copy.back();
@@ -245,18 +278,29 @@ void Scheduler::PeriodicCheck(Time_t now) {
             for (int i = 0; i < machines.size(); i++) {
                 //Scan each machine in this performance tier
                 MachineInfo_t machine = Machine_GetInfo(machines.at(index));
+                
+                // also check to make sure we have enough space including the VMs that are currently migrating and are waiting to be put on machine
+                unsigned pendingsum = 0;
+                if (!pendingMigration[machine.machine_id].empty()) {
+                    //sum all of the VMs waiting to be migrated
+                    for (VMId_t VM : pendingMigration[machine.machine_id]) {
+                        pendingsum += toMigrate[VM];
+                    }
+                }
+
                 //check to make sure CPU and GPU requirements are the same
-                //TODO IDK WHY MACHINE 31 IS DYING LIKE THIS
-                if (machine.machine_id != 31 && machine.cpu == vm_info.cpu && machine.memory_size - machine.memory_used >= toMigrate[aboutToMigrate]) {
-                    cout << "Machine: " << machine.machine_id << " Free memory" <<  machine.memory_size - machine.memory_used << "Memory to be used: " <<toMigrate[aboutToMigrate]<< endl;
+                if (machine.cpu == vm_info.cpu && machine.memory_size - machine.memory_used - pendingsum >= toMigrate[aboutToMigrate]) {
+                    cout << "Machine: " << machine.machine_id << " Free memory " <<  machine.memory_size - machine.memory_used << "Memory to be used: " <<toMigrate[aboutToMigrate]<< endl;
                     //check each VM inside this machine for space
                     //THIS IS JUST COPIED FROM RR CODE
+                    cout << "pending sum is: " << pendingsum << " for machine: " << machine.machine_id << endl;
                     VM_Migrate(aboutToMigrate, machine.machine_id);
+                    pendingMigration[machine.machine_id].push_back(aboutToMigrate);
                     performance_indexRR[mips] = (index + i + 1) % machines.size();
                     found = true;
                     break;
                 }
-                index = (index + i) % machines.size();
+                index = (index + 1) % machines.size();
             }
             if (found)
                 break;
@@ -342,6 +386,12 @@ void MemoryWarning(Time_t time, MachineId_t machine_id) {
   SimOutput("MemoryWarning(): Overflow at " + to_string(machine_id) +
                 " was detected at time " + to_string(time),
             0);
+    MachineInfo_t machine = Machine_GetInfo(machine_id);
+    cout << "memory used is: " << machine.memory_used << " with memory size: " << machine.memory_size << endl << " with active vm size: " << machine.active_vms;
+    cout << "the active vms are: ";
+    for (VMId_t VM : moreMachineInfo[machine_id].active_vms) {
+        cout << VM << " ";
+    }
 }
 
 void MigrationDone(Time_t time, VMId_t vm_id) {
