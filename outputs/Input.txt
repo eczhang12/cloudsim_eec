@@ -1,0 +1,39 @@
+just got info for machine: 0
+pushed back onto machines for machine: 0
+just got info for machine: 1
+pushed back onto machines for machine: 1
+just got info for machine: 2
+pushed back onto machines for machine: 2
+just got info for machine: 3
+pushed back onto machines for machine: 3
+just got info for machine: 4
+pushed back onto machines for machine: 4
+just got info for machine: 5
+pushed back onto machines for machine: 5
+just got info for machine: 6
+pushed back onto machines for machine: 6
+just got info for machine: 7
+pushed back onto machines for machine: 7
+just got info for machine: 8
+pushed back onto machines for machine: 8
+just got info for machine: 9
+pushed back onto machines for machine: 9
+just got info for machine: 10
+pushed back onto machines for machine: 10
+just got info for machine: 11
+pushed back onto machines for machine: 11
+just got info for machine: 12
+pushed back onto machines for machine: 12
+just got info for machine: 13
+pushed back onto machines for machine: 13
+just got info for machine: 14
+pushed back onto machines for machine: 14
+just got info for machine: 15
+pushed back onto machines for machine: 15
+get out of init
+SLA violation report
+SLA0 : 0%
+SLA1 : 0%
+SLA2 : 0%
+Total Energy 0.0032583KW-Hour
+Simulation run finished in 3.48 seconds

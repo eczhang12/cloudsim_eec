@@ -1,0 +1,143 @@
+just got info for machine: 0
+pushed back onto machines for machine: 0
+just got info for machine: 1
+pushed back onto machines for machine: 1
+just got info for machine: 2
+pushed back onto machines for machine: 2
+just got info for machine: 3
+pushed back onto machines for machine: 3
+just got info for machine: 4
+pushed back onto machines for machine: 4
+just got info for machine: 5
+pushed back onto machines for machine: 5
+just got info for machine: 6
+pushed back onto machines for machine: 6
+just got info for machine: 7
+pushed back onto machines for machine: 7
+just got info for machine: 8
+pushed back onto machines for machine: 8
+just got info for machine: 9
+pushed back onto machines for machine: 9
+just got info for machine: 10
+pushed back onto machines for machine: 10
+just got info for machine: 11
+pushed back onto machines for machine: 11
+just got info for machine: 12
+pushed back onto machines for machine: 12
+just got info for machine: 13
+pushed back onto machines for machine: 13
+just got info for machine: 14
+pushed back onto machines for machine: 14
+just got info for machine: 15
+pushed back onto machines for machine: 15
+just got info for machine: 16
+pushed back onto machines for machine: 16
+just got info for machine: 17
+pushed back onto machines for machine: 17
+just got info for machine: 18
+pushed back onto machines for machine: 18
+just got info for machine: 19
+pushed back onto machines for machine: 19
+just got info for machine: 20
+pushed back onto machines for machine: 20
+just got info for machine: 21
+pushed back onto machines for machine: 21
+just got info for machine: 22
+pushed back onto machines for machine: 22
+just got info for machine: 23
+pushed back onto machines for machine: 23
+just got info for machine: 24
+pushed back onto machines for machine: 24
+just got info for machine: 25
+pushed back onto machines for machine: 25
+just got info for machine: 26
+pushed back onto machines for machine: 26
+just got info for machine: 27
+pushed back onto machines for machine: 27
+just got info for machine: 28
+pushed back onto machines for machine: 28
+just got info for machine: 29
+pushed back onto machines for machine: 29
+just got info for machine: 30
+pushed back onto machines for machine: 30
+just got info for machine: 31
+pushed back onto machines for machine: 31
+just got info for machine: 32
+pushed back onto machines for machine: 32
+just got info for machine: 33
+pushed back onto machines for machine: 33
+just got info for machine: 34
+pushed back onto machines for machine: 34
+just got info for machine: 35
+pushed back onto machines for machine: 35
+just got info for machine: 36
+pushed back onto machines for machine: 36
+just got info for machine: 37
+pushed back onto machines for machine: 37
+just got info for machine: 38
+pushed back onto machines for machine: 38
+just got info for machine: 39
+pushed back onto machines for machine: 39
+just got info for machine: 40
+pushed back onto machines for machine: 40
+just got info for machine: 41
+pushed back onto machines for machine: 41
+just got info for machine: 42
+pushed back onto machines for machine: 42
+just got info for machine: 43
+pushed back onto machines for machine: 43
+just got info for machine: 44
+pushed back onto machines for machine: 44
+just got info for machine: 45
+pushed back onto machines for machine: 45
+just got info for machine: 46
+pushed back onto machines for machine: 46
+just got info for machine: 47
+pushed back onto machines for machine: 47
+just got info for machine: 48
+pushed back onto machines for machine: 48
+just got info for machine: 49
+pushed back onto machines for machine: 49
+just got info for machine: 50
+pushed back onto machines for machine: 50
+just got info for machine: 51
+pushed back onto machines for machine: 51
+just got info for machine: 52
+pushed back onto machines for machine: 52
+just got info for machine: 53
+pushed back onto machines for machine: 53
+just got info for machine: 54
+pushed back onto machines for machine: 54
+just got info for machine: 55
+pushed back onto machines for machine: 55
+just got info for machine: 56
+pushed back onto machines for machine: 56
+just got info for machine: 57
+pushed back onto machines for machine: 57
+just got info for machine: 58
+pushed back onto machines for machine: 58
+just got info for machine: 59
+pushed back onto machines for machine: 59
+get out of init
+Machine: 1 Free memory 16384Memory to be used: 560
+pending sum is: 0 for machine: 1
+Machine: 1 Free memory 16384Memory to be used: 592
+pending sum is: 560 for machine: 1
+Machine: 0 Free memory 16384Memory to be used: 608
+pending sum is: 0 for machine: 0
+Machine: 0 Free memory 16384Memory to be used: 576
+pending sum is: 608 for machine: 0
+Machine: 0 Free memory 16384Memory to be used: 680
+pending sum is: 1184 for machine: 0
+Machine: 0 Free memory 16384Memory to be used: 608
+pending sum is: 1864 for machine: 0
+Machine: 3 Free memory 16384Memory to be used: 528
+pending sum is: 0 for machine: 3
+Machine: 1 Free memory 16384Memory to be used: 624
+pending sum is: 1152 for machine: 1
+SLA violation report
+SLA0 : 70%
+SLA1 : 0%
+SLA2 : 0.661924%
+Total Energy 7.27267KW-Hour
+Simulation run finished in 3603.48 seconds

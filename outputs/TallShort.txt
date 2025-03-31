@@ -1,0 +1,71 @@
+just got info for machine: 0
+pushed back onto machines for machine: 0
+just got info for machine: 1
+pushed back onto machines for machine: 1
+just got info for machine: 2
+pushed back onto machines for machine: 2
+just got info for machine: 3
+pushed back onto machines for machine: 3
+just got info for machine: 4
+pushed back onto machines for machine: 4
+just got info for machine: 5
+pushed back onto machines for machine: 5
+just got info for machine: 6
+pushed back onto machines for machine: 6
+just got info for machine: 7
+pushed back onto machines for machine: 7
+just got info for machine: 8
+pushed back onto machines for machine: 8
+just got info for machine: 9
+pushed back onto machines for machine: 9
+just got info for machine: 10
+pushed back onto machines for machine: 10
+just got info for machine: 11
+pushed back onto machines for machine: 11
+just got info for machine: 12
+pushed back onto machines for machine: 12
+just got info for machine: 13
+pushed back onto machines for machine: 13
+just got info for machine: 14
+pushed back onto machines for machine: 14
+just got info for machine: 15
+pushed back onto machines for machine: 15
+just got info for machine: 16
+pushed back onto machines for machine: 16
+just got info for machine: 17
+pushed back onto machines for machine: 17
+just got info for machine: 18
+pushed back onto machines for machine: 18
+just got info for machine: 19
+pushed back onto machines for machine: 19
+just got info for machine: 20
+pushed back onto machines for machine: 20
+just got info for machine: 21
+pushed back onto machines for machine: 21
+just got info for machine: 22
+pushed back onto machines for machine: 22
+just got info for machine: 23
+pushed back onto machines for machine: 23
+get out of init
+Machine: 0 Free memory 16384Memory to be used: 4056
+pending sum is: 0 for machine: 0
+Machine: 1 Free memory 16384Memory to be used: 4056
+pending sum is: 0 for machine: 1
+Machine: 2 Free memory 16384Memory to be used: 4056
+pending sum is: 0 for machine: 2
+Machine: 3 Free memory 16384Memory to be used: 4056
+pending sum is: 0 for machine: 3
+Machine: 4 Free memory 16384Memory to be used: 4064
+pending sum is: 0 for machine: 4
+Machine: 5 Free memory 16384Memory to be used: 4056
+pending sum is: 0 for machine: 5
+Machine: 6 Free memory 16384Memory to be used: 4064
+pending sum is: 0 for machine: 6
+Machine: 7 Free memory 16384Memory to be used: 4064
+pending sum is: 0 for machine: 7
+SLA violation report
+SLA0 : 100%
+SLA1 : 54.878%
+SLA2 : 0%
+Total Energy 0.0885972KW-Hour
+Simulation run finished in 106.68 seconds

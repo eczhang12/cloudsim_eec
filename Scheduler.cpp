@@ -146,49 +146,59 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
     bool found = false;
     SLAType_t level = task_info.required_sla;
     unsigned int current = 0;
-    //iterate through the different performance buckets
-    for (auto& [mips, machines] : machines_by_mips) {
-        unsigned int index = performance_indexRR[mips];
-        //Scan each machine in the current performance tier
-        for (int i = 0; i < machines.size(); i++) {
-            MachineInfo_t machine = Machine_GetInfo(machines.at(index));
-            //check to make sure CPU and GPU requirements are the same
-            if (machine.cpu == task_info.required_cpu && machine.gpus == task_info.gpu_capable && machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
-                //check each VM inside this machine for space
-                //THIS IS JUST COPIED FROM RR CODE
-                vector<VMId_t>& vm_candidates = moreMachineInfo[index].active_vms;
-                VMId_t toAdd = -1;
-                for (const auto& VM : vm_candidates) {
-                    VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
-                    if (task_info.required_vm == vm_info.vm_type && task_info.required_cpu == vm_info.cpu) {
-                        toAdd = VM;
-                        break;
-                    }
-                }
-                // if no useable VM, create one on this machine
-                if (toAdd == -1) {
-                    toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
-                    VM_Attach(toAdd, machine.machine_id);
-                    vm_candidates.push_back(toAdd);
-                }
-                found = true;
-                if (level == SLA0) {
-                    VM_AddTask(toAdd, task_id, HIGH_PRIORITY);
-                } else if (level == SLA2 || level == SLA1) {
-                    VM_AddTask(toAdd, task_id, MID_PRIORITY);
-                } else {
-                    VM_AddTask(toAdd, task_id, LOW_PRIORITY);
-                }
-                //update next index for RR
-                performance_indexRR[mips] = (index + i + 1) % machines.size();
-            }
-            index = (index + 1) % machines.size();
-            if (found) 
-                break;
-        }
-        if (found)
-            break;
+
+    bool must_be_gpu_compatible = true;
+
+    // first time through, gpu compatibility must match. Second time through, not necessary
+    for (unsigned gpu_run = 0; gpu_run < 2; gpu_run++) {
+
+      if (found) break;
+      //iterate through the different performance buckets
+      for (auto& [mips, machines] : machines_by_mips) {
+          unsigned int index = performance_indexRR[mips];
+          //Scan each machine in the current performance tier
+          for (int i = 0; i < machines.size(); i++) {
+              MachineInfo_t machine = Machine_GetInfo(machines.at(index));
+              //check to make sure CPU and GPU requirements are the same, for first time, not necessary second time through
+              bool gpu_req_match = (gpu_run == 0 && machine.gpus == task_info.gpu_capable) || (gpu_run == 1);
+              if (machine.cpu == task_info.required_cpu && gpu_req_match && machine.memory_size - machine.memory_used >= task_info.required_memory + 8) {
+                  //check each VM inside this machine for space
+                  //THIS IS JUST COPIED FROM RR CODE
+                  vector<VMId_t>& vm_candidates = moreMachineInfo[index].active_vms;
+                  VMId_t toAdd = -1;
+                  for (const auto& VM : vm_candidates) {
+                      VMInfo_t vm_info = VM_GetInfo(VMId_t(VM));
+                      if (task_info.required_vm == vm_info.vm_type && task_info.required_cpu == vm_info.cpu) {
+                          toAdd = VM;
+                          break;
+                      }
+                  }
+                  // if no useable VM, create one on this machine
+                  if (toAdd == -1) {
+                      toAdd = VM_Create(VMType_t(task_info.required_vm), task_info.required_cpu);
+                      VM_Attach(toAdd, machine.machine_id);
+                      vm_candidates.push_back(toAdd);
+                  }
+                  found = true;
+                  if (level == SLA0) {
+                      VM_AddTask(toAdd, task_id, HIGH_PRIORITY);
+                  } else if (level == SLA2 || level == SLA1) {
+                      VM_AddTask(toAdd, task_id, MID_PRIORITY);
+                  } else {
+                      VM_AddTask(toAdd, task_id, LOW_PRIORITY);
+                  }
+                  //update next index for RR
+                  performance_indexRR[mips] = (index + i + 1) % machines.size();
+              }
+              index = (index + 1) % machines.size();
+              if (found) 
+                  break;
+          }
+          if (found)
+              break;
+      }
     }
+
 
 
 }
@@ -230,15 +240,21 @@ void Scheduler::PeriodicCheck(Time_t now) {
             bool migrate = false;
             unsigned int vm_memory = 8; // get the memory of the vm + tasks_required memory
             for (TaskId_t task : vm_info.active_tasks) {
+              TaskInfo_t task_info = GetTaskInfo(task);
                 
                 //TODO Not sure what the frick is going on here in terms of math and when to migrate
                 unsigned int mips = machine_info.performance[machine_info.p_state];
                 unsigned int instructions_left = GetTaskInfo(task).remaining_instructions;
-                Time_t time_to_deadline = instructions_left / mips;
+                Time_t time_til_projected_completion = instructions_left / mips;
+                Time_t projected_deadline = now + time_til_projected_completion;
+
+                // we ensure task finishes within 99% of it's provided task time
+                double size_of_red_zone = 0.01;
+                Time_t red_zone_deadline = task_info.arrival + (1 - size_of_red_zone) * (task_info.target_completion - task_info.arrival);
 
                 //Don't want to touch the GPU tasks because they are a pain to deal with
                 //also set the priority to high because we want the tasks closer to deadline to finish quicker
-                if (!GetTaskInfo(task).gpu_capable && time_to_deadline < threshold) { // TODO Dunno what conditions to check when migrating
+                if (!GetTaskInfo(task).gpu_capable && projected_deadline > red_zone_deadline) { // TODO Dunno what conditions to check when migrating
                     SetTaskPriority(task, HIGH_PRIORITY);
                     migrate = true;
                 }

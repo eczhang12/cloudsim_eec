@@ -1,0 +1,71 @@
+just got info for machine: 0
+pushed back onto machines for machine: 0
+just got info for machine: 1
+pushed back onto machines for machine: 1
+just got info for machine: 2
+pushed back onto machines for machine: 2
+just got info for machine: 3
+pushed back onto machines for machine: 3
+just got info for machine: 4
+pushed back onto machines for machine: 4
+just got info for machine: 5
+pushed back onto machines for machine: 5
+just got info for machine: 6
+pushed back onto machines for machine: 6
+just got info for machine: 7
+pushed back onto machines for machine: 7
+just got info for machine: 8
+pushed back onto machines for machine: 8
+just got info for machine: 9
+pushed back onto machines for machine: 9
+just got info for machine: 10
+pushed back onto machines for machine: 10
+just got info for machine: 11
+pushed back onto machines for machine: 11
+just got info for machine: 12
+pushed back onto machines for machine: 12
+just got info for machine: 13
+pushed back onto machines for machine: 13
+just got info for machine: 14
+pushed back onto machines for machine: 14
+just got info for machine: 15
+pushed back onto machines for machine: 15
+get out of init
+Machine: 15 Free memory 14896Memory to be used: 1560
+pending sum is: 0 for machine: 15
+Machine: 2 Free memory 14840Memory to be used: 1464
+pending sum is: 0 for machine: 2
+Machine: 7 Free memory 14904Memory to be used: 1512
+pending sum is: 0 for machine: 7
+Machine: 8 Free memory 14936Memory to be used: 1432
+pending sum is: 0 for machine: 8
+Machine: 11 Free memory 15080Memory to be used: 1440
+pending sum is: 0 for machine: 11
+Machine: 12 Free memory 15024Memory to be used: 1456
+pending sum is: 0 for machine: 12
+Machine: 13 Free memory 14968Memory to be used: 1464
+pending sum is: 0 for machine: 13
+Machine: 15 Free memory 15112Memory to be used: 1248
+pending sum is: 1560 for machine: 15
+Machine: 0 Free memory 15144Memory to be used: 1392
+pending sum is: 0 for machine: 0
+Machine: 1 Free memory 14928Memory to be used: 1224
+pending sum is: 0 for machine: 1
+Machine: 2 Free memory 14936Memory to be used: 1136
+pending sum is: 1464 for machine: 2
+Machine: 3 Free memory 15000Memory to be used: 1200
+pending sum is: 0 for machine: 3
+Machine: 4 Free memory 14880Memory to be used: 1112
+pending sum is: 0 for machine: 4
+Machine: 5 Free memory 14960Memory to be used: 1056
+pending sum is: 0 for machine: 5
+Machine: 6 Free memory 15184Memory to be used: 984
+pending sum is: 0 for machine: 6
+Machine: 7 Free memory 15264Memory to be used: 1088
+pending sum is: 1512 for machine: 7
+SLA violation report
+SLA0 : 62.8557%
+SLA1 : 57.3171%
+SLA2 : 0%
+Total Energy 0.0512284KW-Hour
+Simulation run finished in 69 seconds
