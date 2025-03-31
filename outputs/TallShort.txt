@@ -1,4 +1,42 @@
+cpu 0 has vm types: 
+cpu 1 has vm types: 
+cpu 2 has vm types: 
+cpu 3 has vm types: 0 
+Machine 0's VMs (1): 
+Machine 1's VMs (1): 
+Machine 2's VMs (1): 
+Machine 3's VMs (1): 
+Machine 4's VMs (1): 
+Machine 5's VMs (1): 
+Machine 6's VMs (1): 
+Machine 7's VMs (1): 
+Machine 8's VMs (1): 
+Machine 9's VMs (1): 
+Machine 10's VMs (1): 
+Machine 11's VMs (1): 
+Machine 12's VMs (1): 
+Machine 13's VMs (1): 
+Machine 14's VMs (1): 
+Machine 15's VMs (1): 
+Machine 16's VMs (1): 
+Machine 17's VMs (1): 
+Machine 18's VMs (1): 
+Machine 19's VMs (1): 
+Machine 20's VMs (1): 
+Machine 21's VMs (1): 
+Machine 22's VMs (1): 
+Machine 23's VMs (1): 
+Taskcombo 30 has 0 valid VMS
 reached end of init function
+started task=0 at time=62073
+started task=1009 at time=5941975
+started task=2004 at time=6915113
+started task=63 at time=11916051
+started task=3979 at time=12892108
+ended task=4047 at time=202254370
+ended task=2589 at time=232403017
+ended task=2553 at time=249672526
+ended task=3366 at time=257755551
 SLA violation report
 SLA0 : 100%
 SLA1 : 58.5366%

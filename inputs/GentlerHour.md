@@ -153,3 +153,15 @@ task class:
         Seed: 520231
 }
 
+
+    ARM,
+    POWER,
+    RISCV,
+    X86
+CPUType_t;
+
+    LINUX,
+    LINUX_RT,
+    WIN,
+    AIX
+VM types

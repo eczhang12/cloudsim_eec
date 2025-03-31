@@ -41,6 +41,7 @@ static unsigned active_machines;
 static unsigned total_machines;
 static unsigned total_tasks;
 static CPUPerformance_t default_cpu_performance_state;
+static unsigned total_tasks_added = 0;
 
 
 // tbd
@@ -129,19 +130,50 @@ void Scheduler::Init() {
     machine_to_vm[taskcombo_cpu].push_back(taskcombo_vm);
   }
 
+  // verified
+  for (unsigned i = 0; i < 4; i++) {
+    cout << "cpu " << i << " has vm types: ";
+    for (unsigned j = 0; j < machine_to_vm[i].size(); j++) {
+      cout << machine_to_vm[i][j] << " ";
+    }
+    cout << endl;
+  }
+
 
 
   // 3. for every machine, give it all possible VMS
   for (unsigned i = 0; i < Machine_GetTotal(); i++) {
     MachineInfo_t machineInfo = Machine_GetInfo(MachineId_t(i));
 
-    vector<unsigned int>& candidate_vms = machine_to_vm[machineInfo.cpu];
+    vector<unsigned int> candidate_vms = machine_to_vm[machineInfo.cpu];
     for (unsigned j = 0; j < candidate_vms.size(); j++) {
-      VMId_t vm_id = VM_Create(VMType_t(j), CPUType_t(machineInfo.cpu)); 
+      VMType_t vm_type = (VMType_t) candidate_vms[j];
+      VMId_t vm_id = VM_Create(VMType_t( vm_type), CPUType_t(machineInfo.cpu)); 
       vms.push_back(vm_id);
       VM_Attach(vm_id, (MachineId_t)i);
       machine_to_active_vms[i].push_back(vm_id);
     }
+  }
+
+
+
+  for (unsigned i = 0; i < Machine_GetTotal(); i++) {
+    MachineInfo_t M_info = Machine_GetInfo(i);
+
+    cout << "Machine " << i << "'s VMs ("<< machine_to_active_vms[i].size() << "): ";
+    for (unsigned j = 0; j < machine_to_active_vms[i].size(); j++) {
+      VMId_t vm_id = machine_to_active_vms[i][j];
+
+      // cout << " " << vm_id << "(" << VM_GetInfo(vm_id).vm_type << ") ";
+    }
+    cout << endl;
+  }
+
+  for (const auto& pair : taskCombos) {
+    unsigned taskcombo = pair.first;
+
+    cout << "Taskcombo " << taskcombo << " has " << taskCombos[taskcombo].second.size() << " valid VMS" << endl;
+    
   }
 
 
@@ -236,6 +268,7 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
     if (added_task) break;
     vector<VMId_t>& candidate_vms = machine_to_active_vms[i];
     for (unsigned j = 0; j < candidate_vms.size(); j++) {
+
       if (task_info.required_vm == VM_GetInfo(candidate_vms[j]).vm_type && task_info.required_cpu == M_info.cpu && M_info.memory_size - M_info.memory_used >= task_info.required_memory + 8) {
         VM_AddTask(machine_to_active_vms[i][j], task_id, priority);
         added_task = true;
@@ -245,7 +278,7 @@ void Scheduler::NewTask(Time_t now, TaskId_t task_id) {
 
   }
 
-  if (task_id % 10000 == 0) cout << "started task=" << task_id << endl;
+  if (total_tasks_added++ % 1000 == 0) cout << "started task=" << task_id << " at time=" << now << endl;
   
   
 }
@@ -284,7 +317,7 @@ void Scheduler::TaskComplete(Time_t now, TaskId_t task_id) {
     " is complete at " + to_string(now),
     4);
 
-    if (task_id % 10000 == 0) cout << "ended task=" << task_id << endl;
+    if (total_tasks_added++ % 1000 == 0) cout << "ended task=" << task_id << " at time=" << now << endl;
 
 }
 

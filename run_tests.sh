@@ -14,7 +14,7 @@ TESTCASES=(
     "GentlerHour.md"
     "Hour.md"
     "Input.md"
-    "MatchMelfYouCan.md"
+    "MatchMeIfYouCan.md"
     "NiceAndSmooth.md"
     "SpikeyMean.md"
     "SpikeyNefarious.md"
