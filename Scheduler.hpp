@@ -22,6 +22,9 @@ public:
     void Shutdown(Time_t now);
     void TaskComplete(Time_t now, TaskId_t task_id);
     void PrintStuff();
+    void PrintTaskInfo(TaskId_t task_id);
+    void PrintVMInfo(VMId_t vm_id);
+    void PrintMachineInfo(MachineId_t machine_id);
 private:
     vector<VMId_t> vms;
     vector<MachineId_t> machines;
